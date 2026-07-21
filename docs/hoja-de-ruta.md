@@ -117,15 +117,17 @@ contra la base de datos, no contra la interfaz.
 
 ---
 
-### E3 · Check-in diario y termómetro — *2 a 3 semanas*
+### E3 · Check-in diario — 🟡 EN CURSO
 
-- Check-in: ánimo, estrés, sueño, energía, carga académica, percepción social
-- Termómetro emocional
-- Texto breve opcional
-- Historial propio
+- ✅ Check-in: ánimo, estrés, sueño, energía, carga académica, percepción social (escala 1-5)
+- ✅ Texto breve opcional (guardado en `checkin_notes`, tabla aparte)
+- ✅ Un check-in por día (unique en la base); opción de rehacer el de hoy
+- ✅ Historial propio
+- ⏳ Termómetro emocional (`emotional_entries`) — se agrupa con la rueda en E5,
+  porque comparten tabla y patrón
 
 **Hecho cuando:** completas un check-in en menos de 3 minutos (criterio de la §13) y aparece
-en el historial.
+en el historial. *(Pendiente de probar en el teléfono.)*
 
 ---
 
