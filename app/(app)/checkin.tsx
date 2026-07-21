@@ -18,6 +18,7 @@ import {
   todayStr,
   type CheckinValues,
 } from '@/lib/checkins';
+import { recompute } from '@/lib/wellness';
 
 type Dim = {
   key: keyof CheckinValues;
@@ -78,6 +79,9 @@ export default function Checkin() {
       setError(res.error);
       return;
     }
+    // Dispara el recalculo de indicadores/puntos/racha (best-effort: si la
+    // funcion aun no esta desplegada, el check-in ya quedo guardado igual).
+    await recompute();
     router.back();
   }
 

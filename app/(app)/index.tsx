@@ -4,19 +4,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { getLatestCheckin, todayStr } from '@/lib/checkins';
+import { getGamification, type Gamification } from '@/lib/wellness';
 
 export default function Home() {
   const { profile, session, hasConsent, signOut, revokeConsent } = useSession();
   const userId = session!.user.id;
   const [checkedToday, setCheckedToday] = useState<boolean | null>(null);
+  const [gam, setGam] = useState<Gamification | null>(null);
 
-  // Refresca el estado del check-in cada vez que se vuelve a esta pantalla
-  // (p. ej. al regresar de guardar uno).
+  // Refresca el estado del check-in y la gamificacion cada vez que se vuelve a
+  // esta pantalla (p. ej. al regresar de guardar uno).
   useFocusEffect(
     useCallback(() => {
       let active = true;
       getLatestCheckin(userId).then((latest) => {
         if (active) setCheckedToday(!!latest && latest.local_date === todayStr());
+      });
+      getGamification(userId).then((g) => {
+        if (active) setGam(g);
       });
       return () => {
         active = false;
@@ -68,11 +73,31 @@ export default function Home() {
           </Pressable>
         </Link>
 
-        <Link href="/historial" asChild>
-          <Pressable style={styles.secondary}>
-            <Text style={styles.secondaryText}>Ver historial</Text>
-          </Pressable>
-        </Link>
+        {/* Puntos y racha (calculados por el servidor) */}
+        <View style={styles.stats}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{gam?.points ?? 0}</Text>
+            <Text style={styles.statLabel}>Puntos</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{gam?.current_streak ?? 0}</Text>
+            <Text style={styles.statLabel}>Racha (dias)</Text>
+          </View>
+        </View>
+
+        <View style={styles.rowLinks}>
+          <Link href="/historial" asChild>
+            <Pressable style={[styles.secondary, styles.flex1]}>
+              <Text style={styles.secondaryText}>Historial</Text>
+            </Pressable>
+          </Link>
+          <Link href="/progreso" asChild>
+            <Pressable style={[styles.secondary, styles.flex1]}>
+              <Text style={styles.secondaryText}>Mi progreso</Text>
+            </Pressable>
+          </Link>
+        </View>
 
         <View style={styles.spacer} />
 
@@ -105,6 +130,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  stats: {
+    flexDirection: 'row',
+    backgroundColor: '#f2f7fd',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  stat: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 24, fontWeight: '700', color: '#208AEF' },
+  statLabel: { fontSize: 12, color: '#888', marginTop: 2 },
+  statDivider: { width: 1, height: 32, backgroundColor: '#dce6f2' },
+  rowLinks: { flexDirection: 'row', gap: 12 },
+  flex1: { flex: 1 },
   secondary: {
     borderWidth: 1,
     borderColor: '#208AEF',

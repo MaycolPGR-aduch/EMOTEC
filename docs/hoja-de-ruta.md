@@ -131,13 +131,18 @@ visible en el historial y confirmado en la base.
 
 ---
 
-### E4 · Indicadores, puntos y racha — *2 semanas*
+### E4 · Indicadores, puntos y racha — 🟡 ESCRITO (falta desplegar y probar)
 
-- Cálculo de indicadores diarios y semanales
-- Puntos y racha orientados a constancia, no a competencia
-- Gráfico de evolución personal
+- ✅ Edge Function `recompute`: calcula promedios semanales, puntos y racha con
+  `service_role`. Verifica el JWT y el consentimiento antes de escribir.
+- ✅ Puntos vía `points_ledger` idempotente (reejecutar no duplica); estado
+  reconstruido de la suma del ledger → no falsificable desde el cliente.
+- ✅ Pantalla "Mi progreso" (promedios de la semana) y tarjeta de puntos/racha en el home.
+- ✅ El check-in dispara el recálculo al guardar.
+- ⏳ Desplegar la función (`supabase functions deploy recompute`, por HTTPS, no 5432).
 
-**Hecho cuando:** los mismos datos producen siempre los mismos indicadores (reproducible).
+**Hecho cuando:** los mismos datos producen siempre los mismos indicadores (reproducible),
+y los puntos/racha no cambian con peticiones directas del cliente.
 
 ---
 
