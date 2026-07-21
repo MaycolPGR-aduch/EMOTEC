@@ -86,6 +86,12 @@ export default function Home() {
           </View>
         </View>
 
+        <Link href="/actividades" asChild>
+          <Pressable style={styles.secondary}>
+            <Text style={styles.secondaryText}>Actividades de bienestar</Text>
+          </Pressable>
+        </Link>
+
         <View style={styles.rowLinks}>
           <Link href="/historial" asChild>
             <Pressable style={[styles.secondary, styles.flex1]}>

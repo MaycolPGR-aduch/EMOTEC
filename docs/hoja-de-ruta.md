@@ -146,12 +146,15 @@ llamadas sin usuario (401).
 
 ---
 
-### E5 · Rueda de emociones y respiración — *2 semanas*
+### E5 · Actividades de bienestar — 🟡 ESCRITO (falta probar)
 
-- Rueda de emociones: primaria, secundaria, intensidad, contexto
-- Respiración guiada con animación
+- ✅ Termómetro emocional: intensidad 0-10 + contexto (`emotional_entries`, kind='termometro')
+- ✅ Rueda de emociones: primaria, secundaria, intensidad, contexto (kind='rueda')
+- ✅ Respiración guiada: círculo animado (inhala/retén/exhala/pausa) desde el
+  catálogo, con valoración; registra `activity_sessions`
+- ✅ Hub de actividades enlazado desde el home
 
-**Hecho cuando:** ambas registran su sesión y alimentan los indicadores de E4.
+**Hecho cuando:** las tres registran su sesión en la base. *(Pendiente de probar en el teléfono.)*
 
 ---
 
