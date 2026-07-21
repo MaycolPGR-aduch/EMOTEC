@@ -47,3 +47,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Auxiliar de un solo uso: migraciones concatenadas para el SQL Editor
+APLICAR_EN_SQL_EDITOR.sql

@@ -82,18 +82,26 @@ stack está mal elegido, se descubre aquí y no en el mes cuatro.*
 
 ---
 
-### E1 · Modelo de datos y permisos — *2 semanas*
+### E1 · Modelo de datos y permisos — *2 a 3 semanas*
 
-- Esquema: `profiles`, `consents`, `checkins`, `emotional_entries`, `activity_sessions`,
-  `alerts`, `followups`, `audit_logs`
-- RLS con **negación por defecto** en todas las tablas
-- Políticas: el estudiante solo ve lo suyo; el tutor solo ve a sus asignados
-- Pruebas de permisos
+**Escrito.** 17 migraciones en `supabase/migrations/` (0001–0017). El esquema del MVP
+resultó más grande de lo estimado —**20 tablas, no 8**— porque las políticas RLS son un
+sistema acoplado y conviene diseñarlo completo una sola vez.
 
-**Hecho cuando:** con el usuario A intentas leer datos del usuario B y la base te lo niega.
+- 10 enums + 20 tablas: identidad, consentimiento, datos del estudiante, derivados
+  (solo `service_role`), operación
+- 4 funciones `SECURITY DEFINER` que resuelven la recursión de RLS en `profiles`
+- RLS con **negación por defecto** en las 20 tablas (migración 0010 = punto de corte)
+- Políticas de estudiante y de tutor/admin; el tutor no tiene ninguna vía al texto libre
+- Puerta de consentimiento `AS RESTRICTIVE`; auditoría por triggers; RPC del panel del tutor
+- Seed con recursos de ayuda reales (teléfonos oficiales del MINSA)
+- Revisado por dos pases estáticos: sin bloqueantes, 12/12 vectores de fuga cerrados
 
-*Solo se modelan las entidades que el MVP toca. Las 15 de la §11 son el destino, no el punto
-de partida.*
+**Pendiente:** aplicar con `supabase db push` contra el proyecto real y correr las
+verificaciones (aislamiento entre usuarios, puerta de consentimiento, escalada de rol).
+
+**Hecho cuando:** con el usuario A intentas leer datos del usuario B y la base te lo niega,
+verificado con dos JWT reales contra PostgREST, no contra la app.
 
 ---
 
