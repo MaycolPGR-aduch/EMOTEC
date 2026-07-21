@@ -117,7 +117,7 @@ contra la base de datos, no contra la interfaz.
 
 ---
 
-### E3 · Check-in diario — 🟡 EN CURSO
+### E3 · Check-in diario — ✅ COMPLETO
 
 - ✅ Check-in: ánimo, estrés, sueño, energía, carga académica, percepción social (escala 1-5)
 - ✅ Texto breve opcional (guardado en `checkin_notes`, tabla aparte)
@@ -126,8 +126,8 @@ contra la base de datos, no contra la interfaz.
 - ⏳ Termómetro emocional (`emotional_entries`) — se agrupa con la rueda en E5,
   porque comparten tabla y patrón
 
-**Hecho cuando:** completas un check-in en menos de 3 minutos (criterio de la §13) y aparece
-en el historial. *(Pendiente de probar en el teléfono.)*
+**Verificado:** check-in real guardado desde el teléfono con valores propios (no de prueba),
+visible en el historial y confirmado en la base.
 
 ---
 
