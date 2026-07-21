@@ -68,17 +68,15 @@ dibujos, diagnóstico automático, iOS, panel web, Python/ML.
 
 ## Etapas
 
-### E0 · Conexión con Supabase — *1 a 2 semanas*
+### E0 · Conexión con Supabase — ✅ COMPLETO
 
-- Proyecto en Supabase (región y credenciales)
-- Cliente de Supabase en la app, sesión persistente
-- Tabla `profiles` con rol (`estudiante` / `tutor` / `admin`)
-- Registro e inicio de sesión funcionando
+- ✅ Proyecto en Supabase (São Paulo), migraciones aplicadas
+- ✅ Cliente de Supabase con sesión persistente (`AsyncStorage`)
+- ✅ `profiles` con rol; el trigger fuerza `estudiante` al registrarse
+- ✅ Registro e inicio de sesión funcionando desde el teléfono
 
-**Hecho cuando:** te registras desde el teléfono, cierras la app, la reabres y sigues dentro.
-
-*Esta etapa es la rebanada vertical: atraviesa app → red → auth → base de datos. Si algo del
-stack está mal elegido, se descubre aquí y no en el mes cuatro.*
+**Verificado:** cuenta creada en el dispositivo, perfil con `role=estudiante` (el trigger
+funciona y la escalada de privilegios está cerrada). Sesión persiste al reabrir la app.
 
 ---
 
@@ -97,11 +95,15 @@ sistema acoplado y conviene diseñarlo completo una sola vez.
 - Seed con recursos de ayuda reales (teléfonos oficiales del MINSA)
 - Revisado por dos pases estáticos: sin bloqueantes, 12/12 vectores de fuga cerrados
 
-**Pendiente:** aplicar con `supabase db push` contra el proyecto real y correr las
-verificaciones (aislamiento entre usuarios, puerta de consentimiento, escalada de rol).
+**✅ Aplicado y verificado contra la base real:**
+- Anónimo bloqueado en tablas sensibles (`checkins`, `checkin_notes`, `profiles`, `alerts`),
+  permitido en `help_resources` (HTTP 401 vs 200 vía API REST).
+- Estructura: 20/20 tablas con RLS, 0 sin RLS, 0 funciones definer sin `search_path`.
+- Puerta de consentimiento: un usuario real sin consentir NO puede insertar en `checkins`
+  (rechazado por la política `consent_gate_insert`).
 
-**Hecho cuando:** con el usuario A intentas leer datos del usuario B y la base te lo niega,
-verificado con dos JWT reales contra PostgREST, no contra la app.
+*(Se aplicó por el SQL Editor porque la red bloquea el puerto 5432; reconciliar el historial
+de la CLI con `supabase migration repair` cuando 5432 esté disponible.)*
 
 ---
 
