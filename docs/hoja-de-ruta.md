@@ -185,7 +185,16 @@ La etapa más delicada: es donde los datos de un estudiante se vuelven visibles 
   y cierre, promedios de la semana; todo vía los RPC `tutor_*` (solo resúmenes)
 
 **Verificado (E7b):** con check-ins de estrés sostenido, se creó una alerta y al estudiante le
-apareció acompañamiento sin etiqueta. Falta probar E7c en el teléfono (login como tutor).
+apareció acompañamiento sin etiqueta.
+
+**Verificado (E7c):** el tutor ve el resumen y la evidencia de su asignado. Prueba de
+privacidad contra la base con el JWT del tutor: `checkin_notes`=0, `checkins`=0,
+perfiles de estudiantes visibles=1 (solo el asignado). El requisito nº1 se cumple a nivel de
+base de datos, no de interfaz.
+
+> **✅ MVP FUNCIONALMENTE COMPLETO (jul 2026)** — las 11 funcionalidades de la §13
+> construidas y verificadas en dispositivo. Falta solo E8 (empaquetar APK) y el checklist
+> pre-piloto de abajo.
 
 **Criterio:** cada alerta muestra la regla que la originó (snapshot `rule_code`/`version`), y
 el tutor solo accede a sus asignados vía RPC que reverifican `is_tutor_of()`.
