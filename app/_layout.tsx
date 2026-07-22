@@ -4,8 +4,6 @@ import { ActivityIndicator, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SessionProvider, useSession } from '@/lib/session';
 
-// Mantener la splash visible hasta saber si hay sesion, para no parpadear la
-// pantalla de login cuando el usuario ya estaba dentro.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -17,7 +15,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session, hasConsent, isLoading } = useSession();
+  const { session, profile, hasConsent, isLoading } = useSession();
 
   useEffect(() => {
     if (!isLoading) SplashScreen.hideAsync();
@@ -25,9 +23,8 @@ function RootNavigator() {
 
   if (isLoading) return null;
 
-  // Con sesion pero aun determinando el consentimiento: breve pantalla de carga
-  // (evita un parpadeo entre "consentir" y "app").
-  if (session && hasConsent === null) {
+  // Con sesion pero sin perfil o sin saber el consentimiento todavia.
+  if (session && (!profile || hasConsent === null)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator />
@@ -35,21 +32,39 @@ function RootNavigator() {
     );
   }
 
-  // Tres estados mutuamente excluyentes, gobernados por guards declarativos:
-  //   sin sesion               -> (auth)
-  //   con sesion, sin consentir -> (consent)
-  //   con sesion y consentido   -> (app)
+  const isStudent = profile?.role === 'estudiante';
+  const isTutor = profile?.role === 'tutor';
+  const isAdmin = profile?.role === 'admin';
+
+  // El consentimiento SOLO aplica al estudiante: es el consentimiento para
+  // recolectar SUS datos de bienestar. Obligar a un tutor a aceptarlo no tendria
+  // sentido (no registra check-ins) y ensuciaria la prueba legal de quien consintio.
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="(auth)" />
       </Stack.Protected>
-      <Stack.Protected guard={!!session && hasConsent === false}>
+
+      <Stack.Protected guard={!!session && isStudent && hasConsent === false}>
         <Stack.Screen name="(consent)" />
       </Stack.Protected>
-      <Stack.Protected guard={!!session && hasConsent === true}>
+
+      <Stack.Protected guard={!!session && isStudent && hasConsent === true}>
         <Stack.Screen name="(app)" />
       </Stack.Protected>
+
+      <Stack.Protected guard={!!session && isTutor}>
+        <Stack.Screen name="(tutor)" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={!!session && isAdmin}>
+        <Stack.Screen name="(admin)" />
+      </Stack.Protected>
+
+      {/* Recursos de ayuda: SIEMPRE accesible, incluso sin sesion ni consentimiento.
+          Es la pantalla que importa en una crisis; si el login la bloqueara, el
+          diseno fallaria justo en el escenario para el que existe. */}
+      <Stack.Screen name="ayuda" />
     </Stack>
   );
 }

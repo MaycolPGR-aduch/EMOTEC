@@ -113,6 +113,12 @@ export default function Home() {
 
         <View style={styles.spacer} />
 
+        <Link href="/ayuda" asChild>
+          <Pressable>
+            <Text style={styles.help}>Buscar apoyo</Text>
+          </Pressable>
+        </Link>
+
         {hasConsent && (
           <Pressable onPress={onRevoke}>
             <Text style={styles.muted}>Revocar consentimiento</Text>
@@ -164,5 +170,6 @@ const styles = StyleSheet.create({
   },
   secondaryText: { color: '#208AEF', fontSize: 16, fontWeight: '600' },
   spacer: { flex: 1 },
+  help: { color: '#208AEF', fontSize: 15, fontWeight: '600', textAlign: 'center', paddingVertical: 10 },
   muted: { color: '#999', fontSize: 14, textAlign: 'center', paddingVertical: 8 },
 });

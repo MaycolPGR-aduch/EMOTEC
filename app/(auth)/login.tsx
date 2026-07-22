@@ -84,6 +84,12 @@ export default function Login() {
               Registrate
             </Link>
           </View>
+
+          {/* Accesible sin sesion: si alguien necesita ayuda urgente, no deberia
+              tener que recordar su contrasena para encontrar un telefono. */}
+          <Link href="/ayuda" style={styles.help}>
+            Buscar apoyo
+          </Link>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -117,4 +123,5 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 16 },
   footerText: { color: '#555' },
   link: { color: '#208AEF', fontWeight: '600' },
+  help: { color: '#208AEF', fontWeight: '600', textAlign: 'center', marginTop: 28 },
 });
