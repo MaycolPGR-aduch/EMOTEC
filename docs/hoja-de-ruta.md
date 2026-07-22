@@ -198,6 +198,22 @@ un estudiante no asignado.
 
 ---
 
+## ⚠️ Pendientes obligatorios ANTES del piloto
+
+Cosas que se relajaron para poder desarrollar y **deben revertirse** antes de que entren
+estudiantes reales:
+
+| Pendiente | Por qué importa |
+|---|---|
+| **Reactivar "Confirm email"** (Authentication → Providers → Email) | Se desactivó para crear cuentas de prueba. Apagada, cualquiera puede registrarse con el correo de otra persona — inaceptable con datos de salud |
+| **Eliminar cuentas de prueba** (`maycoladmin@`, `+tutor@`, etc.) y sus datos | No deben convivir con datos reales |
+| **Revisar el texto de consentimiento v1.0** con el responsable ético | Hoy es un borrador funcional escrito para poder desarrollar |
+| **Revisar los umbrales de las reglas de alerta** con el responsable ético | Los sembrados son valores de arranque, no clínicamente validados |
+| **Confirmar residencia de datos** (São Paulo) con protección de datos | Ley 29733: los datos de bienestar son sensibles |
+| **Reconciliar historial de migraciones** (`supabase migration repair`) | Se aplicaron por el SQL Editor; la CLI no las tiene registradas |
+
+---
+
 ## Decisiones ya tomadas
 
 | Decisión | Valor | Por qué |
