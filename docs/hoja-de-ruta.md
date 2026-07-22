@@ -146,7 +146,7 @@ llamadas sin usuario (401).
 
 ---
 
-### E5 · Actividades de bienestar — 🟡 ESCRITO (falta probar)
+### E5 · Actividades de bienestar — ✅ COMPLETO
 
 - ✅ Termómetro emocional: intensidad 0-10 + contexto (`emotional_entries`, kind='termometro')
 - ✅ Rueda de emociones: primaria, secundaria, intensidad, contexto (kind='rueda')
@@ -154,7 +154,12 @@ llamadas sin usuario (401).
   catálogo, con valoración; registra `activity_sessions`
 - ✅ Hub de actividades enlazado desde el home
 
-**Hecho cuando:** las tres registran su sesión en la base. *(Pendiente de probar en el teléfono.)*
+**Verificado:** las tres pantallas funcionan en el dispositivo.
+
+> **Decisión (jul 2026):** el catálogo se siente corto, pero se amplía **después de E7**,
+> no antes. Motivo: lo que diferencia a EMOTEC de una app de bienestar genérica son las
+> alertas y el panel del tutor (E7), no la cantidad de actividades. Además, ampliar después
+> permite elegir actividades que alimenten indicadores ya en uso. Ver backlog al final.
 
 ---
 
@@ -203,6 +208,25 @@ un estudiante no asignado.
 | Vinculación tutor–estudiante | Asignación manual | El MVP no necesita gestión de inscripciones |
 | Notificaciones | Fuera del MVP | No están en la §13; nos deja en Expo Go |
 | SDK | 54 | Es lo que soporta el Expo Go del teléfono |
+
+---
+
+## Backlog priorizado — ampliación del catálogo de actividades
+
+Aprobado por el usuario, **a construir después de E7**. Cada una debe alimentar un
+indicador o ayudar al acompañamiento; si no, no entra.
+
+| Actividad | Origen | Dato aprovechable | Costo |
+|---|---|---|---|
+| **Diario breve** | §7 de la propuesta | Temas y emociones declaradas. Texto **privado**: el tutor nunca lo ve (tabla aparte, como `checkin_notes`) | Medio: tabla + RLS + puerta de consentimiento |
+| **Situaciones interactivas** | §7 de la propuesta | **Preferencias de afrontamiento**. La única actividad que enseña estrategias, no solo registra estado | Alto: catálogo de escenarios + opciones + respuestas |
+| **Descarga mental académica** | Nueva | Conecta con el indicador de *carga académica* | Medio |
+| **Más respiración + relajación/anclaje 5-4-3-2-1** | Nueva | Uso y valoración de actividad | **Bajo**: técnicas nuevas son filas en `activity_catalog` (cero código); relajación y anclaje reutilizan el motor de fases |
+
+> **Nota técnica:** `activity_kind` es un enum (`respiracion`, `rueda`, `psicoeducativa`).
+> Agregar un tipo nuevo exige su propia migración aislada (`ALTER TYPE ... ADD VALUE` no
+> corre en la misma transacción) y **no se puede borrar un valor**. Elegir la taxonomía con
+> cuidado antes de tocarlo.
 
 ---
 

@@ -20,6 +20,24 @@ export type WeeklyIndicator = {
   adherence_pct: number | null;
 };
 
+// Cada frase del reporte guarda de que indicador salio: es lo que hace el reporte
+// explicable (criterio de E6).
+export type ReportSegment = {
+  segment_id: string;
+  text: string;
+  source_indicator: string | null;
+  value: number | null;
+};
+
+export type WeeklyReport = {
+  period_start: string;
+  period_end: string;
+  template_code: string;
+  template_version: number;
+  content: ReportSegment[];
+  generated_at: string;
+};
+
 // Invoca la Edge Function que recalcula indicadores/puntos/racha con service_role.
 // El cliente NO escribe esas tablas (por eso no son falsificables); solo dispara
 // el recalculo y luego LEE el resultado.
@@ -35,6 +53,17 @@ export async function getGamification(userId: string): Promise<Gamification | nu
     .eq('student_id', userId)
     .maybeSingle();
   return (data as Gamification) ?? null;
+}
+
+export async function getLatestReport(userId: string): Promise<WeeklyReport | null> {
+  const { data } = await supabase
+    .from('reports')
+    .select('period_start, period_end, template_code, template_version, content, generated_at')
+    .eq('student_id', userId)
+    .order('period_start', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as WeeklyReport) ?? null;
 }
 
 export async function getLatestWeekly(userId: string): Promise<WeeklyIndicator | null> {

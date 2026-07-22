@@ -92,6 +92,12 @@ export default function Home() {
           </Pressable>
         </Link>
 
+        <Link href="/reporte" asChild>
+          <Pressable style={styles.secondary}>
+            <Text style={styles.secondaryText}>Mi reporte semanal</Text>
+          </Pressable>
+        </Link>
+
         <View style={styles.rowLinks}>
           <Link href="/historial" asChild>
             <Pressable style={[styles.secondary, styles.flex1]}>

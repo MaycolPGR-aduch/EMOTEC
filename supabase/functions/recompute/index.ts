@@ -87,27 +87,61 @@ Deno.serve(async (req) => {
     const wkStart = weekStart(today);
     const wkEnd = addDays(wkStart, 6);
     const inWeek = rows.filter((c) => c.local_date >= wkStart && c.local_date <= wkEnd);
+    let ind: Record<string, number> | null = null;
     if (inWeek.length > 0) {
       const avg = (k: string) =>
         round2(inWeek.reduce((s, c) => s + (c[k] as number), 0) / inWeek.length);
+      ind = {
+        mood_avg: avg('mood'),
+        stress_avg: avg('stress'),
+        sleep_avg: avg('sleep'),
+        energy_avg: avg('energy'),
+        academic_load_avg: avg('academic_load'),
+        social_perception_avg: avg('social_perception'),
+        checkin_count: inWeek.length,
+        adherence_pct: round2((inWeek.length / 7) * 100),
+      };
       await admin.from('wellness_indicators').upsert(
         {
           student_id: uid,
           period_kind: 'semanal',
           period_start: wkStart,
           period_end: wkEnd,
-          mood_avg: avg('mood'),
-          stress_avg: avg('stress'),
-          sleep_avg: avg('sleep'),
-          energy_avg: avg('energy'),
-          academic_load_avg: avg('academic_load'),
-          social_perception_avg: avg('social_perception'),
-          checkin_count: inWeek.length,
-          adherence_pct: round2((inWeek.length / 7) * 100),
+          ...ind,
           calc_version: CALC_VERSION,
         },
         { onConflict: 'student_id,period_kind,period_start' },
       );
+    }
+
+    // 6b. Reporte semanal desde la plantilla activa. El texto NO se inventa aqui:
+    //     sale de segmentos aprobados, y cada frase guarda de que indicador salio
+    //     (criterio de explicabilidad). Nunca incluye texto escrito por el estudiante.
+    if (ind) {
+      const { data: tpl } = await admin
+        .from('report_templates')
+        .select('code, version, segments')
+        .eq('is_active', true)
+        .eq('locale', 'es-PE')
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (tpl) {
+        const content = buildReport(tpl.segments as TemplateSegment[], ind);
+        await admin.from('reports').upsert(
+          {
+            student_id: uid,
+            period_start: wkStart,
+            period_end: wkEnd,
+            template_code: tpl.code,
+            template_version: tpl.version,
+            calc_version: CALC_VERSION,
+            content,
+          },
+          { onConflict: 'student_id,period_start' },
+        );
+      }
     }
 
     // 7. Estado de gamificacion.
@@ -128,6 +162,59 @@ Deno.serve(async (req) => {
     return json({ error: String(e) }, 500);
   }
 });
+
+// --- reporte ---
+
+type TemplateSegment = {
+  id: string;
+  condicion: string;
+  texto: string;
+  indicador_origen: string | null;
+};
+
+type ReportSegment = {
+  segment_id: string;
+  text: string;
+  source_indicator: string | null;
+  value: number | null;
+};
+
+function buildReport(segments: TemplateSegment[], ind: Record<string, number>): ReportSegment[] {
+  const out: ReportSegment[] = [];
+  for (const seg of segments ?? []) {
+    const { ok, value } = evalCondition(seg.condicion, ind);
+    if (!ok) continue;
+    out.push({
+      segment_id: seg.id,
+      text: value == null ? seg.texto : seg.texto.replace('{valor}', String(value)),
+      source_indicator: seg.indicador_origen ?? null,
+      value,
+    });
+  }
+  return out;
+}
+
+// Mini-DSL: 'siempre' o '<indicador><op><numero>'. Se parsea con regex, NUNCA con
+// eval(): el contenido de una plantilla es dato, no codigo.
+function evalCondition(
+  cond: string,
+  ind: Record<string, number>,
+): { ok: boolean; value: number | null } {
+  if (!cond || cond.trim() === 'siempre') return { ok: true, value: null };
+  const m = /^([a-z_]+)\s*(<=|>=|==|<|>)\s*(-?\d+(?:\.\d+)?)$/.exec(cond.trim());
+  if (!m) return { ok: false, value: null };
+  const [, field, op, numStr] = m;
+  const v = ind[field];
+  if (v == null) return { ok: false, value: null };
+  const n = parseFloat(numStr);
+  let ok = false;
+  if (op === '<=') ok = v <= n;
+  else if (op === '>=') ok = v >= n;
+  else if (op === '<') ok = v < n;
+  else if (op === '>') ok = v > n;
+  else if (op === '==') ok = v === n;
+  return { ok, value: ok ? v : null };
+}
 
 // --- helpers ---
 
