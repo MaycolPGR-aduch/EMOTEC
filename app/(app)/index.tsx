@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
@@ -55,7 +55,11 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.title}>EMOTEC</Text>
         <Text style={styles.hello}>Hola, {profile?.full_name ?? 'estudiante'}</Text>
 
@@ -136,7 +140,7 @@ export default function Home() {
         <Pressable onPress={signOut}>
           <Text style={styles.muted}>Cerrar sesion</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -157,7 +161,10 @@ function TarjetaApoyo({ level }: { level: AlertLevel }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 24, gap: 14 },
+  scroll: { flex: 1 },
+  // flexGrow: 1 -> el contenido llena la pantalla cuando sobra espacio (para que
+  // el spacer empuje los enlaces al fondo) pero crece y hace scroll cuando falta.
+  container: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 14 },
   apoyo: { borderRadius: 12, padding: 16, gap: 8 },
   apoyoSuave: { backgroundColor: '#f2f7fd', borderWidth: 1, borderColor: '#dce6f2' },
   apoyoUrgente: { backgroundColor: '#f5faff', borderWidth: 1, borderColor: '#cfe3f7' },
@@ -205,7 +212,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryText: { color: '#208AEF', fontSize: 16, fontWeight: '600' },
-  spacer: { flex: 1 },
+  spacer: { flex: 1, minHeight: 16 },
   help: { color: '#208AEF', fontSize: 15, fontWeight: '600', textAlign: 'center', paddingVertical: 10 },
   muted: { color: '#999', fontSize: 14, textAlign: 'center', paddingVertical: 8 },
 });

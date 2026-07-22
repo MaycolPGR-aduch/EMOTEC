@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 
@@ -33,7 +33,7 @@ export default function Actividades() {
         </Pressable>
       </View>
 
-      <View style={styles.list}>
+      <ScrollView contentContainerStyle={styles.list}>
         {ACTIVITIES.map((a) => (
           <Link key={a.href} href={a.href} asChild>
             <Pressable style={styles.card}>
@@ -45,7 +45,7 @@ export default function Actividades() {
             </Pressable>
           </Link>
         ))}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
