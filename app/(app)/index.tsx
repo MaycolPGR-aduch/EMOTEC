@@ -1,16 +1,18 @@
 import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link, useFocusEffect } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { getLatestCheckin, todayStr } from '@/lib/checkins';
 import { getGamification, type Gamification } from '@/lib/wellness';
+import { getOpenAlerts, mensajeApoyo, nivelMasAlto, type AlertLevel } from '@/lib/alerts';
 
 export default function Home() {
   const { profile, session, hasConsent, signOut, revokeConsent } = useSession();
   const userId = session!.user.id;
   const [checkedToday, setCheckedToday] = useState<boolean | null>(null);
   const [gam, setGam] = useState<Gamification | null>(null);
+  const [apoyo, setApoyo] = useState<AlertLevel | null>(null);
 
   // Refresca el estado del check-in y la gamificacion cada vez que se vuelve a
   // esta pantalla (p. ej. al regresar de guardar uno).
@@ -22,6 +24,9 @@ export default function Home() {
       });
       getGamification(userId).then((g) => {
         if (active) setGam(g);
+      });
+      getOpenAlerts(userId).then((a) => {
+        if (active) setApoyo(nivelMasAlto(a));
       });
       return () => {
         active = false;
@@ -86,6 +91,10 @@ export default function Home() {
           </View>
         </View>
 
+        {/* Acompanamiento cuando hay senales abiertas. Nunca dice "alerta" ni
+            muestra un nivel: describe lo observado y ofrece algo concreto. */}
+        {apoyo && <TarjetaApoyo level={apoyo} />}
+
         <Link href="/actividades" asChild>
           <Pressable style={styles.secondary}>
             <Text style={styles.secondaryText}>Actividades de bienestar</Text>
@@ -132,9 +141,36 @@ export default function Home() {
   );
 }
 
+function TarjetaApoyo({ level }: { level: AlertLevel }) {
+  const m = mensajeApoyo(level);
+  const urgente = level === 'critica' || level === 'prioritaria';
+  return (
+    <View style={[styles.apoyo, urgente ? styles.apoyoUrgente : styles.apoyoSuave]}>
+      <Text style={styles.apoyoTitulo}>{m.titulo}</Text>
+      <Text style={styles.apoyoCuerpo}>{m.cuerpo}</Text>
+      <Pressable style={styles.apoyoBtn} onPress={() => router.push(m.destino)}>
+        <Text style={styles.apoyoBtnText}>{m.accion}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff' },
   container: { flex: 1, paddingHorizontal: 24, paddingTop: 24, gap: 14 },
+  apoyo: { borderRadius: 12, padding: 16, gap: 8 },
+  apoyoSuave: { backgroundColor: '#f2f7fd', borderWidth: 1, borderColor: '#dce6f2' },
+  apoyoUrgente: { backgroundColor: '#f5faff', borderWidth: 1, borderColor: '#cfe3f7' },
+  apoyoTitulo: { fontSize: 16, fontWeight: '700', color: '#1c5a94' },
+  apoyoCuerpo: { fontSize: 14, color: '#40566b', lineHeight: 20 },
+  apoyoBtn: {
+    backgroundColor: '#208AEF',
+    borderRadius: 10,
+    paddingVertical: 11,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  apoyoBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   title: { fontSize: 30, fontWeight: '700', color: '#208AEF' },
   hello: { fontSize: 17, color: '#333' },
   banner: { borderRadius: 12, padding: 16, marginTop: 8 },

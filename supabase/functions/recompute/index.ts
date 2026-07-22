@@ -157,11 +157,137 @@ Deno.serve(async (req) => {
       { onConflict: 'student_id' },
     );
 
-    return json({ points, current_streak: current, longest_streak: longest });
+    // 9. Motor de alertas: evalua las reglas activas contra los check-ins.
+    //    Las alertas son SOLICITUDES DE REVISION, no conclusiones. Nunca se
+    //    escribe texto del estudiante en evidence (un trigger con allowlist lo
+    //    impide en la base, ademas de esta regla de codigo).
+    const nuevasAlertas = await evaluarAlertas(admin, uid, rows, today);
+
+    return json({
+      points,
+      current_streak: current,
+      longest_streak: longest,
+      alertas_nuevas: nuevasAlertas,
+    });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
 });
+
+// --- motor de alertas ---
+
+type CheckinRow = Record<string, string | number>;
+
+// deno-lint-ignore no-explicit-any
+async function evaluarAlertas(
+  admin: any,
+  uid: string,
+  rows: CheckinRow[],
+  today: string,
+): Promise<number> {
+  const { data: rules } = await admin
+    .from('alert_rules')
+    .select('id, code, version, level, definition')
+    .eq('is_active', true);
+  if (!rules || rules.length === 0) return 0;
+
+  // Deduplicacion: si ya hay una alerta ABIERTA o EN REVISION de esta misma
+  // regla, no se crea otra. Sin esto, cada check-in generaria una alerta nueva y
+  // el panel del tutor se volveria ruido -- y el ruido hace que se ignoren las
+  // alertas que si importan.
+  const { data: abiertas } = await admin
+    .from('alerts')
+    .select('rule_code')
+    .eq('student_id', uid)
+    .in('status', ['abierta', 'en_revision']);
+  const yaAbiertas = new Set((abiertas ?? []).map((a: { rule_code: string }) => a.rule_code));
+
+  let creadas = 0;
+  for (const rule of rules) {
+    if (yaAbiertas.has(rule.code)) continue;
+    const res = evaluarRegla(rule.definition, rows, today);
+    if (!res.triggered) continue;
+
+    const { error } = await admin.from('alerts').insert({
+      student_id: uid,
+      rule_id: rule.id,
+      rule_code: rule.code,       // snapshot: la alerta sigue explicandose
+      rule_version: rule.version, // aunque la regla evolucione despues
+      level: rule.level,
+      evidence: res.evidence,
+      window_start: res.windowStart,
+      window_end: res.windowEnd,
+    });
+    if (error) {
+      // 23505 = ya existe una alerta abierta de esta regla (indice unico parcial,
+      // defensa contra llamadas concurrentes). No es un fallo real.
+      if (error.code !== '23505') console.error('alerta no insertada', rule.code, error);
+    } else {
+      creadas++;
+    }
+    // Evita duplicar dentro de la MISMA ejecucion si dos reglas comparten code.
+    yaAbiertas.add(rule.code);
+  }
+  return creadas;
+}
+
+function evaluarRegla(
+  def: Record<string, unknown>,
+  rows: CheckinRow[],
+  today: string,
+): {
+  triggered: boolean;
+  evidence?: Record<string, unknown>;
+  windowStart?: string;
+  windowEnd?: string;
+} {
+  const dias = (def.ventana_dias as number) ?? 7;
+  const esDelta = def.tipo === 'delta';
+  const minCheckins = (def.min_checkins as number) ?? (esDelta ? 3 : 1);
+
+  const windowEnd = today;
+  const windowStart = addDays(today, -(dias - 1));
+  const inWindow = rows.filter((r) => r.local_date >= windowStart && r.local_date <= windowEnd);
+  if (inWindow.length < minCheckins) return { triggered: false };
+
+  const field = def.indicador as string;      // p.ej. 'stress_avg'
+  const col = field.replace(/_avg$/, '');     // columna cruda: 'stress'
+  const avg = round2(inWindow.reduce((s, r) => s + (r[col] as number), 0) / inWindow.length);
+
+  const evidence: Record<string, unknown> = {
+    window_start: windowStart,
+    window_end: windowEnd,
+    checkin_count: inWindow.length,
+    threshold: def.umbral,
+    calc_version: CALC_VERSION,
+  };
+  evidence[field] = avg;
+
+  let value = avg;
+  if (esDelta) {
+    // Compara la ventana actual contra la inmediatamente anterior.
+    const prevEnd = addDays(windowStart, -1);
+    const prevStart = addDays(prevEnd, -(dias - 1));
+    const prev = rows.filter((r) => r.local_date >= prevStart && r.local_date <= prevEnd);
+    if (prev.length < minCheckins) return { triggered: false };
+    const prevAvg = round2(prev.reduce((s, r) => s + (r[col] as number), 0) / prev.length);
+    value = round2(avg - prevAvg);
+    evidence.delta = value;
+  }
+
+  return compare(value, def.operador as string, def.umbral as number)
+    ? { triggered: true, evidence, windowStart, windowEnd }
+    : { triggered: false };
+}
+
+function compare(v: number, op: string, n: number): boolean {
+  if (op === '<=') return v <= n;
+  if (op === '>=') return v >= n;
+  if (op === '<') return v < n;
+  if (op === '>') return v > n;
+  if (op === '==') return v === n;
+  return false;
+}
 
 // --- reporte ---
 
