@@ -66,6 +66,24 @@ export async function getLatestReport(userId: string): Promise<WeeklyReport | nu
   return (data as WeeklyReport) ?? null;
 }
 
+// Ultimas N semanas, mas reciente primero. Con 2 basta para comparar esta semana
+// contra la anterior.
+export async function getWeeklyIndicators(
+  userId: string,
+  limit = 2,
+): Promise<WeeklyIndicator[]> {
+  const { data } = await supabase
+    .from('wellness_indicators')
+    .select(
+      'period_start, period_end, mood_avg, stress_avg, sleep_avg, energy_avg, academic_load_avg, social_perception_avg, checkin_count, adherence_pct',
+    )
+    .eq('student_id', userId)
+    .eq('period_kind', 'semanal')
+    .order('period_start', { ascending: false })
+    .limit(limit);
+  return (data as WeeklyIndicator[]) ?? [];
+}
+
 export async function getLatestWeekly(userId: string): Promise<WeeklyIndicator | null> {
   const { data } = await supabase
     .from('wellness_indicators')
