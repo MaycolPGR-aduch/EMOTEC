@@ -243,12 +243,14 @@ estudiantes reales:
 Aprobado por el usuario, **a construir después de E7**. Cada una debe alimentar un
 indicador o ayudar al acompañamiento; si no, no entra.
 
-| Actividad | Origen | Dato aprovechable | Costo |
+| Actividad | Origen | Dato aprovechable | Estado |
 |---|---|---|---|
-| **Diario breve** | §7 de la propuesta | Temas y emociones declaradas. Texto **privado**: el tutor nunca lo ve (tabla aparte, como `checkin_notes`) | Medio: tabla + RLS + puerta de consentimiento |
-| **Situaciones interactivas** | §7 de la propuesta | **Preferencias de afrontamiento**. La única actividad que enseña estrategias, no solo registra estado | Alto: catálogo de escenarios + opciones + respuestas |
-| **Descarga mental académica** | Nueva | Conecta con el indicador de *carga académica* | Medio |
-| **Más respiración + relajación/anclaje 5-4-3-2-1** | Nueva | Uso y valoración de actividad | **Bajo**: técnicas nuevas son filas en `activity_catalog` (cero código); relajación y anclaje reutilizan el motor de fases |
+| **Más respiración (coherencia, 4-6)** | Nueva | Uso y valoración | ✅ hecho (0021) — filas en el catálogo, cero código |
+| **Anclaje 5-4-3-2-1** | Nueva | Uso de actividad sensorial | ✅ hecho (0021) — pantalla propia |
+| **Tres cosas buenas (gratitud)** | Nueva | Texto **privado** (tabla `gratitude_entries`, el tutor no la ve) | ✅ hecho (0021) |
+| **Diario breve** | §7 de la propuesta | Temas y emociones declaradas. Texto **privado** | ⬜ pendiente (tabla + RLS + puerta) |
+| **Situaciones interactivas** | §7 de la propuesta | **Preferencias de afrontamiento**. La única que enseña estrategias | ⬜ pendiente (lo más grande: catálogo de escenarios) |
+| **Descarga mental académica** | Nueva | Conecta con el indicador de *carga académica* | ⬜ pendiente |
 
 > **Nota técnica:** `activity_kind` es un enum (`respiracion`, `rueda`, `psicoeducativa`).
 > Agregar un tipo nuevo exige su propia migración aislada (`ALTER TYPE ... ADD VALUE` no

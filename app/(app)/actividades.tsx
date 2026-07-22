@@ -21,6 +21,18 @@ const ACTIVITIES = [
     title: 'Respiracion guiada',
     desc: 'Una pausa breve para regularte.',
   },
+  {
+    href: '/anclaje' as const,
+    emoji: '🌿',
+    title: 'Anclaje 5-4-3-2-1',
+    desc: 'Vuelve al presente usando tus sentidos.',
+  },
+  {
+    href: '/gratitud' as const,
+    emoji: '🌤️',
+    title: 'Tres cosas buenas',
+    desc: 'Anota lo bueno de tu dia, por pequeno que sea.',
+  },
 ];
 
 export default function Actividades() {

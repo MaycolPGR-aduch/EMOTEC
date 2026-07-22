@@ -84,6 +84,49 @@ export async function getBreathingActivities(): Promise<BreathingActivity[]> {
   return (data as BreathingActivity[]) ?? [];
 }
 
+// Registra una sesion de actividad generica (anclaje, gratitud, etc.) y
+// devuelve su id, para poder enlazar datos asociados (p.ej. la gratitud).
+export async function logActivitySession(
+  userId: string,
+  activityCode: string,
+  startedAt: Date,
+  durationSec: number,
+  rating: number | null,
+): Promise<{ id: string | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from('activity_sessions')
+    .insert({
+      student_id: userId,
+      activity_code: activityCode,
+      started_at: startedAt.toISOString(),
+      completed_at: new Date().toISOString(),
+      local_date: todayStr(),
+      duration_sec: durationSec,
+      rating,
+    })
+    .select('id')
+    .single();
+  return { id: (data?.id as string) ?? null, error: error?.message ?? null };
+}
+
+// Tres cosas buenas: texto PRIVADO del estudiante (tabla aparte, el tutor no la
+// ve). items: hasta 3 frases breves.
+export async function saveGratitude(
+  userId: string,
+  items: string[],
+  sessionId: string | null,
+): Promise<{ error: string | null }> {
+  const clean = items.map((x) => x.trim()).filter((x) => x.length > 0);
+  if (clean.length === 0) return { error: 'Escribe al menos una cosa buena.' };
+  const { error } = await supabase.from('gratitude_entries').insert({
+    student_id: userId,
+    session_id: sessionId,
+    items: clean,
+    local_date: todayStr(),
+  });
+  return { error: error?.message ?? null };
+}
+
 // Respiracion: registra la sesion (para historial y adherencia) con su valoracion.
 export async function saveBreathingSession(
   userId: string,
