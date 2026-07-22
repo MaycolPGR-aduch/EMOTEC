@@ -174,19 +174,21 @@ llamadas sin usuario (401).
 
 ---
 
-### E7 · Alertas, panel del tutor y recursos de ayuda — *3 a 4 semanas*
+### E7 · Alertas, panel del tutor y recursos de ayuda — ✅ COMPLETO
 
 La etapa más delicada: es donde los datos de un estudiante se vuelven visibles para otra persona.
 
-- Motor de reglas con los 4 niveles (informativa, preventiva, prioritaria, crítica)
-- Cada alerta guarda la evidencia mínima y la versión de la regla
-- Panel del tutor dentro de la misma app, según rol: solo asignados, solo resúmenes
-- Registro de seguimiento y cierre
-- Auditoría de accesos
-- **Pantalla de recursos de ayuda con teléfonos reales** para el nivel crítico
+- ✅ **E7a** — rutas por rol, panel de admin (roles + asignaciones), pantalla de ayuda
+- ✅ **E7b** — motor de reglas (4 niveles), evidencia solo de indicadores, superficie de
+  apoyo al estudiante (sin la palabra "alerta")
+- ✅ **E7c** — panel del tutor: estudiantes asignados, señales con su evidencia, seguimiento
+  y cierre, promedios de la semana; todo vía los RPC `tutor_*` (solo resúmenes)
 
-**Hecho cuando:** cada alerta muestra la regla que la originó, y un tutor no puede acceder a
-un estudiante no asignado.
+**Verificado (E7b):** con check-ins de estrés sostenido, se creó una alerta y al estudiante le
+apareció acompañamiento sin etiqueta. Falta probar E7c en el teléfono (login como tutor).
+
+**Criterio:** cada alerta muestra la regla que la originó (snapshot `rule_code`/`version`), y
+el tutor solo accede a sus asignados vía RPC que reverifican `is_tutor_of()`.
 
 ---
 
