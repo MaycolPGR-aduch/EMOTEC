@@ -39,6 +39,12 @@ const ACTIVITIES = [
     title: 'Situaciones',
     desc: 'Explora como afrontarias situaciones cotidianas.',
   },
+  {
+    href: '/caja' as const,
+    emoji: '📥',
+    title: 'Caja de preocupaciones',
+    desc: 'Ordena lo que te preocupa y encuentra un primer paso.',
+  },
 ];
 
 export default function Actividades() {

@@ -248,9 +248,19 @@ indicador o ayudar al acompañamiento; si no, no entra.
 | **Más respiración (coherencia, 4-6)** | Nueva | Uso y valoración | ✅ hecho (0021) — filas en el catálogo, cero código |
 | **Anclaje 5-4-3-2-1** | Nueva | Uso de actividad sensorial | ✅ hecho (0021) — pantalla propia |
 | **Tres cosas buenas (gratitud)** | Nueva | Texto **privado** (tabla `gratitude_entries`, el tutor no la ve) | ✅ hecho (0021) |
-| **Diario breve** | §7 de la propuesta | Temas y emociones declaradas. Texto **privado** | ⬜ pendiente (tabla + RLS + puerta) |
-| **Situaciones interactivas** | §7 de la propuesta | **Preferencias de afrontamiento**. La única que enseña estrategias | ⬜ pendiente (lo más grande: catálogo de escenarios) |
-| **Descarga mental académica** | Nueva | Conecta con el indicador de *carga académica* | ⬜ pendiente |
+| **Situaciones interactivas** | §7 propuesta / doc §5 | Preferencias de afrontamiento (privado) | ✅ hecho (0022) |
+| **Caja de preocupaciones** | Catálogo doc §4.6 | Texto **privado**; separa accionable de rumiación | ✅ hecho (0023). Apoyo siempre visible, sin escaneo de texto |
+| **Diario breve** | §7 propuesta / doc §3.5, §5.5 | Temas declarados (privado) | ⬜ pendiente |
+| **Evento e impacto** | Catálogo doc §3.4 | Contexto (qué pasó, área, impacto, control, apoyo) | ⬜ pendiente — recomendada del catálogo |
+| **Detective de emociones** | Catálogo doc §5.1 | Psicoeducación; reutiliza patrón de Situaciones | ⬜ pendiente — recomendada del catálogo |
+| **Descarga mental académica** | Nueva / doc §5.9 | Conecta con el indicador de *carga académica* | ⬜ pendiente |
+| **Relajación muscular / escaneo corporal** | Doc §4.3 | Reutiliza el motor de fases | ⬜ pendiente |
+
+> **Descartadas del MVP** (del catálogo, doc): cuestionario de bienestar extenso (fatiga),
+> minijuego de atención (mini-proyecto, dato ~nulo, riesgo de evaluación encubierta), colorear
+> el clima emocional (mucha UI, poco dato). **Pendiente de valorar:** columna
+> `professional_review_status` en `activity_catalog` (doc §9.1) — barata y encaja con el
+> checklist pre-piloto.
 
 > **Nota técnica:** `activity_kind` es un enum (`respiracion`, `rueda`, `psicoeducativa`).
 > Agregar un tipo nuevo exige su propia migración aislada (`ALTER TYPE ... ADD VALUE` no
