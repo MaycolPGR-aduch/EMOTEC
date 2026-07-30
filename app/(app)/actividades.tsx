@@ -33,6 +33,12 @@ const ACTIVITIES = [
     title: 'Tres cosas buenas',
     desc: 'Anota lo bueno de tu dia, por pequeno que sea.',
   },
+  {
+    href: '/situaciones' as const,
+    emoji: '🧭',
+    title: 'Situaciones',
+    desc: 'Explora como afrontarias situaciones cotidianas.',
+  },
 ];
 
 export default function Actividades() {
