@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { saveTermometro } from '@/lib/activities';
-import { ContextPicker, IntensityScale } from '@/components/wellness-inputs';
+import { AppText, Button, ContextPicker, IntensityScale, Screen } from '@/components/ui';
+import { color, space } from '@/theme';
 
 export default function Termometro() {
   const { session } = useSession();
@@ -28,62 +28,53 @@ export default function Termometro() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Termometro emocional</Text>
-        <Text style={styles.subtitle}>
-          Que tan intenso es lo que sientes ahora mismo?
-        </Text>
+    <Screen scroll background="surface" contentContainerStyle={styles.content}>
+      <AppText variant="h1" color={color.brand}>
+        Termometro emocional
+      </AppText>
+      <AppText variant="body" color={color.textSecondary}>
+        Que tan intenso es lo que sientes ahora mismo?
+      </AppText>
 
-        <Text style={styles.label}>Intensidad</Text>
-        <IntensityScale value={intensity} onChange={setIntensity} />
-        <View style={styles.anchors}>
-          <Text style={styles.anchor}>0 · nada</Text>
-          <Text style={styles.anchor}>10 · muchisimo</Text>
-        </View>
+      <AppText variant="bodyStrong" color={color.textStrong} style={styles.label}>
+        Intensidad
+      </AppText>
+      <IntensityScale value={intensity} onChange={setIntensity} />
+      <View style={styles.anchors}>
+        <AppText variant="caption" color={color.textFaint}>
+          0 · nada
+        </AppText>
+        <AppText variant="caption" color={color.textFaint}>
+          10 · muchisimo
+        </AppText>
+      </View>
 
-        <Text style={styles.label}>Con que se relaciona? (opcional)</Text>
-        <ContextPicker value={context} onChange={setContext} />
+      <AppText variant="bodyStrong" color={color.textStrong} style={styles.label}>
+        Con que se relaciona? (opcional)
+      </AppText>
+      <ContextPicker value={context} onChange={setContext} />
 
-        {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <AppText variant="body" color={color.danger}>
+          {error}
+        </AppText>
+      )}
 
-        <Pressable
-          style={[styles.button, (intensity == null || saving) && styles.buttonDisabled]}
-          onPress={onSave}
-          disabled={intensity == null || saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Guardar</Text>
-          )}
-        </Pressable>
-        <Pressable style={styles.cancel} onPress={() => router.back()} disabled={saving}>
-          <Text style={styles.cancelText}>Cancelar</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+      <Button
+        title="Guardar"
+        onPress={onSave}
+        loading={saving}
+        disabled={intensity == null}
+        style={styles.save}
+      />
+      <Button title="Cancelar" variant="ghost" onPress={() => router.back()} disabled={saving} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 24, gap: 8 },
-  title: { fontSize: 24, fontWeight: '700', color: '#208AEF' },
-  subtitle: { fontSize: 15, color: '#666', marginBottom: 12 },
-  label: { fontSize: 16, fontWeight: '600', color: '#222', marginTop: 18, marginBottom: 10 },
-  anchors: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  anchor: { fontSize: 12, color: '#9aa5b1' },
-  error: { color: '#c0392b', fontSize: 14, marginTop: 14 },
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  cancel: { alignItems: 'center', paddingVertical: 12 },
-  cancelText: { color: '#888', fontSize: 15 },
+  content: { gap: space.sm },
+  label: { marginTop: space.lg },
+  anchors: { flexDirection: 'row', justifyContent: 'space-between', marginTop: space.xs },
+  save: { marginTop: space.xl },
 });

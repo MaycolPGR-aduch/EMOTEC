@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { getLatestCheckin, todayStr } from '@/lib/checkins';
 import { getGamification, type Gamification } from '@/lib/wellness';
 import { getOpenAlerts, mensajeApoyo, nivelMasAlto, type AlertLevel } from '@/lib/alerts';
+import { AppText, Button, Card, Screen, SupportLink } from '@/components/ui';
+import { color, radius, space } from '@/theme';
 
 export default function Home() {
   const { profile, session, hasConsent, signOut, revokeConsent } = useSession();
@@ -14,8 +15,6 @@ export default function Home() {
   const [gam, setGam] = useState<Gamification | null>(null);
   const [apoyo, setApoyo] = useState<AlertLevel | null>(null);
 
-  // Refresca el estado del check-in y la gamificacion cada vez que se vuelve a
-  // esta pantalla (p. ej. al regresar de guardar uno).
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -54,165 +53,120 @@ export default function Home() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
+    <Screen scroll background="surface" contentContainerStyle={styles.container}>
+      <AppText variant="display" color={color.brand}>
+        EMOTEC
+      </AppText>
+      <AppText variant="subtitle" color={color.textDefault}>
+        Hola, {profile?.full_name ?? 'estudiante'}
+      </AppText>
+
+      {/* Estado del check-in de hoy */}
+      <View
+        style={[
+          styles.banner,
+          { backgroundColor: checkedToday ? color.successSurface : color.warningSurface },
+        ]}
       >
-        <Text style={styles.title}>EMOTEC</Text>
-        <Text style={styles.hello}>Hola, {profile?.full_name ?? 'estudiante'}</Text>
+        <AppText variant="body" weight="semibold" color={color.textStrong}>
+          {checkedToday === null
+            ? 'Cargando...'
+            : checkedToday
+              ? 'Ya hiciste tu check-in de hoy'
+              : 'Aun no has hecho tu check-in de hoy'}
+        </AppText>
+      </View>
 
-        {/* Estado del check-in de hoy */}
-        <View style={[styles.banner, checkedToday ? styles.bannerDone : styles.bannerPending]}>
-          <Text style={styles.bannerText}>
-            {checkedToday === null
-              ? 'Cargando...'
-              : checkedToday
-                ? 'Ya hiciste tu check-in de hoy'
-                : 'Aun no has hecho tu check-in de hoy'}
-          </Text>
-        </View>
+      <Button
+        title={checkedToday ? 'Ver / rehacer check-in' : 'Hacer check-in de hoy'}
+        onPress={() => router.push('/checkin')}
+      />
 
-        <Link href="/checkin" asChild>
-          <Pressable style={styles.primary}>
-            <Text style={styles.primaryText}>
-              {checkedToday ? 'Ver / rehacer check-in' : 'Hacer check-in de hoy'}
-            </Text>
-          </Pressable>
-        </Link>
+      {/* Puntos y racha (calculados por el servidor) */}
+      <View style={styles.stats}>
+        <Stat value={gam?.points ?? 0} label="Puntos" />
+        <View style={styles.statDivider} />
+        <Stat value={gam?.current_streak ?? 0} label="Racha (dias)" />
+      </View>
 
-        {/* Puntos y racha (calculados por el servidor) */}
-        <View style={styles.stats}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{gam?.points ?? 0}</Text>
-            <Text style={styles.statLabel}>Puntos</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{gam?.current_streak ?? 0}</Text>
-            <Text style={styles.statLabel}>Racha (dias)</Text>
-          </View>
-        </View>
+      {apoyo && <TarjetaApoyo level={apoyo} />}
 
-        {/* Acompanamiento cuando hay senales abiertas. Nunca dice "alerta" ni
-            muestra un nivel: describe lo observado y ofrece algo concreto. */}
-        {apoyo && <TarjetaApoyo level={apoyo} />}
+      <Button
+        title="Actividades de bienestar"
+        variant="secondary"
+        onPress={() => router.push('/actividades')}
+      />
+      <Button
+        title="Mi reporte semanal"
+        variant="secondary"
+        onPress={() => router.push('/reporte')}
+      />
+      <View style={styles.rowLinks}>
+        <Button title="Historial" variant="secondary" onPress={() => router.push('/historial')} style={styles.flex1} />
+        <Button title="Mi progreso" variant="secondary" onPress={() => router.push('/progreso')} style={styles.flex1} />
+      </View>
 
-        <Link href="/actividades" asChild>
-          <Pressable style={styles.secondary}>
-            <Text style={styles.secondaryText}>Actividades de bienestar</Text>
-          </Pressable>
-        </Link>
+      <View style={styles.spacer} />
 
-        <Link href="/reporte" asChild>
-          <Pressable style={styles.secondary}>
-            <Text style={styles.secondaryText}>Mi reporte semanal</Text>
-          </Pressable>
-        </Link>
-
-        <View style={styles.rowLinks}>
-          <Link href="/historial" asChild>
-            <Pressable style={[styles.secondary, styles.flex1]}>
-              <Text style={styles.secondaryText}>Historial</Text>
-            </Pressable>
-          </Link>
-          <Link href="/progreso" asChild>
-            <Pressable style={[styles.secondary, styles.flex1]}>
-              <Text style={styles.secondaryText}>Mi progreso</Text>
-            </Pressable>
-          </Link>
-        </View>
-
-        <View style={styles.spacer} />
-
-        <Link href="/ayuda" asChild>
-          <Pressable>
-            <Text style={styles.help}>Buscar apoyo</Text>
-          </Pressable>
-        </Link>
-
-        {hasConsent && (
-          <Pressable onPress={onRevoke}>
-            <Text style={styles.muted}>Revocar consentimiento</Text>
-          </Pressable>
-        )}
-        <Pressable onPress={signOut}>
-          <Text style={styles.muted}>Cerrar sesion</Text>
+      <SupportLink />
+      {hasConsent && (
+        <Pressable onPress={onRevoke}>
+          <AppText variant="body" color={color.textFaint} align="center">
+            Revocar consentimiento
+          </AppText>
         </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+      )}
+      <Pressable onPress={signOut}>
+        <AppText variant="body" color={color.textFaint} align="center">
+          Cerrar sesion
+        </AppText>
+      </Pressable>
+    </Screen>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <AppText variant="h1" color={color.brand}>
+        {String(value)}
+      </AppText>
+      <AppText variant="caption" color={color.textMuted}>
+        {label}
+      </AppText>
+    </View>
   );
 }
 
 function TarjetaApoyo({ level }: { level: AlertLevel }) {
   const m = mensajeApoyo(level);
-  const urgente = level === 'critica' || level === 'prioritaria';
   return (
-    <View style={[styles.apoyo, urgente ? styles.apoyoUrgente : styles.apoyoSuave]}>
-      <Text style={styles.apoyoTitulo}>{m.titulo}</Text>
-      <Text style={styles.apoyoCuerpo}>{m.cuerpo}</Text>
-      <Pressable style={styles.apoyoBtn} onPress={() => router.push(m.destino)}>
-        <Text style={styles.apoyoBtnText}>{m.accion}</Text>
-      </Pressable>
-    </View>
+    <Card variant="brandSubtle" style={styles.apoyo}>
+      <AppText variant="bodyStrong" color={color.brandInk}>
+        {m.titulo}
+      </AppText>
+      <AppText variant="body" color={color.textDefault}>
+        {m.cuerpo}
+      </AppText>
+      <Button title={m.accion} size="md" onPress={() => router.push(m.destino)} />
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  scroll: { flex: 1 },
-  // flexGrow: 1 -> el contenido llena la pantalla cuando sobra espacio (para que
-  // el spacer empuje los enlaces al fondo) pero crece y hace scroll cuando falta.
-  container: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 14 },
-  apoyo: { borderRadius: 12, padding: 16, gap: 8 },
-  apoyoSuave: { backgroundColor: '#f2f7fd', borderWidth: 1, borderColor: '#dce6f2' },
-  apoyoUrgente: { backgroundColor: '#f5faff', borderWidth: 1, borderColor: '#cfe3f7' },
-  apoyoTitulo: { fontSize: 16, fontWeight: '700', color: '#1c5a94' },
-  apoyoCuerpo: { fontSize: 14, color: '#40566b', lineHeight: 20 },
-  apoyoBtn: {
-    backgroundColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  apoyoBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 30, fontWeight: '700', color: '#208AEF' },
-  hello: { fontSize: 17, color: '#333' },
-  banner: { borderRadius: 12, padding: 16, marginTop: 8 },
-  bannerDone: { backgroundColor: '#e6f4ea' },
-  bannerPending: { backgroundColor: '#fdf0e3' },
-  bannerText: { fontSize: 15, fontWeight: '600', color: '#333' },
-  primary: {
-    backgroundColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  primaryText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  container: { paddingBottom: space.xxl },
+  banner: { borderRadius: radius.lg, padding: space.lg, marginTop: space.sm },
   stats: {
     flexDirection: 'row',
-    backgroundColor: '#f2f7fd',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: color.surfaceBrand,
+    borderRadius: radius.lg,
+    paddingVertical: space.lg,
     alignItems: 'center',
   },
   stat: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 24, fontWeight: '700', color: '#208AEF' },
-  statLabel: { fontSize: 12, color: '#888', marginTop: 2 },
-  statDivider: { width: 1, height: 32, backgroundColor: '#dce6f2' },
-  rowLinks: { flexDirection: 'row', gap: 12 },
+  statDivider: { width: 1, height: 32, backgroundColor: color.borderInput },
+  rowLinks: { flexDirection: 'row', gap: space.md },
   flex1: { flex: 1 },
-  secondary: {
-    borderWidth: 1,
-    borderColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  secondaryText: { color: '#208AEF', fontSize: 16, fontWeight: '600' },
-  spacer: { flex: 1, minHeight: 16 },
-  help: { color: '#208AEF', fontSize: 15, fontWeight: '600', textAlign: 'center', paddingVertical: 10 },
-  muted: { color: '#999', fontSize: 14, textAlign: 'center', paddingVertical: 8 },
+  spacer: { flex: 1, minHeight: space.lg },
+  apoyo: { gap: space.sm },
 });
