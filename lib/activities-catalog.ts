@@ -18,4 +18,6 @@ export const ACTIVITIES: ActivityItem[] = [
   { href: '/gratitud', icon: 'gratitud', title: 'Tres cosas buenas', desc: 'Anota lo bueno de tu dia, por pequeno que sea.' },
   { href: '/situaciones', icon: 'situaciones', title: 'Situaciones', desc: 'Explora como afrontarias situaciones cotidianas.' },
   { href: '/caja', icon: 'caja', title: 'Caja de preocupaciones', desc: 'Ordena lo que te preocupa y encuentra un primer paso.' },
+  { href: '/diario', icon: 'diario', title: 'Diario breve', desc: 'Tu dia en tres momentos: lo bueno, lo dificil y lo que ayudo.' },
+  { href: '/relajacion', icon: 'relajacion', title: 'Relajacion muscular', desc: 'Tensa y suelta cada grupo muscular, de pies a cabeza.' },
 ];

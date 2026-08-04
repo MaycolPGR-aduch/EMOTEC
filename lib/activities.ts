@@ -74,6 +74,23 @@ export async function saveRueda(
   return { error: error?.message ?? null };
 }
 
+export type RelaxationConfig = {
+  tensa_seg: number;
+  suelta_seg: number;
+  groups: { label: string }[];
+};
+
+// Lee la config de una actividad del catalogo (p.ej. relajacion muscular: los
+// grupos y tiempos viven en la base, no en el cliente).
+export async function getActivityConfig<T>(code: string): Promise<T | null> {
+  const { data } = await supabase
+    .from('activity_catalog')
+    .select('config')
+    .eq('code', code)
+    .maybeSingle();
+  return (data?.config as T) ?? null;
+}
+
 export async function getBreathingActivities(): Promise<BreathingActivity[]> {
   const { data } = await supabase
     .from('activity_catalog')
