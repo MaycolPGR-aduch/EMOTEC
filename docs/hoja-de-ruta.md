@@ -256,6 +256,11 @@ indicador o ayudar al acompañamiento; si no, no entra.
 | **Descarga mental académica** | Nueva / doc §5.9 | Conecta con el indicador de *carga académica* | ⬜ pendiente |
 | **Relajación muscular / escaneo corporal** | Doc §4.3 | Reutiliza el motor de fases | ⬜ pendiente |
 
+> **Mejora futura (jul 2026, pedido del usuario):** revisar y reforzar las actividades ya
+> construidas — ampliar contenido (más escenarios, más técnicas), pulir textos y flujos, y
+> hacer que algunas alimenten indicadores. Pendiente para una pasada de calidad tras completar
+> las tandas.
+
 > **Descartadas del MVP** (del catálogo, doc): cuestionario de bienestar extenso (fatiga),
 > minijuego de atención (mini-proyecto, dato ~nulo, riesgo de evaluación encubierta), colorear
 > el clima emocional (mucha UI, poco dato). **Pendiente de valorar:** columna

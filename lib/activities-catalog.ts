@@ -20,4 +20,6 @@ export const ACTIVITIES: ActivityItem[] = [
   { href: '/caja', icon: 'caja', title: 'Caja de preocupaciones', desc: 'Ordena lo que te preocupa y encuentra un primer paso.' },
   { href: '/diario', icon: 'diario', title: 'Diario breve', desc: 'Tu dia en tres momentos: lo bueno, lo dificil y lo que ayudo.' },
   { href: '/relajacion', icon: 'relajacion', title: 'Relajacion muscular', desc: 'Tensa y suelta cada grupo muscular, de pies a cabeza.' },
+  { href: '/detective', icon: 'detective', title: 'Detective de emociones', desc: 'Practica reconocer lo que siente alguien en una escena.' },
+  { href: '/evento', icon: 'evento', title: 'Evento e impacto', desc: 'Registra algo que te paso y como te afecto.' },
 ];
