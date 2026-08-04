@@ -6,7 +6,7 @@
 // (los titulos igual se ven en negrita). Al instalar la fuente, basta cambiar
 // FONT_ENABLED a true: AppText aplicara la familia Nunito. Cambio de un archivo.
 
-const FONT_ENABLED = false; // -> true cuando Nunito este instalada y cargada
+const FONT_ENABLED = true; // Nunito instalada y cargada en app/_layout.tsx
 
 export const fontFamily = {
   regular: 'Nunito_400Regular',
