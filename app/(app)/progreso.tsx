@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/session';
 import {
   getGamification,
@@ -8,7 +7,7 @@ import {
   type Gamification,
   type WeeklyIndicator,
 } from '@/lib/wellness';
-import { AppText, Card, ScreenHeader } from '@/components/ui';
+import { AppText, Card, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
 export default function Progreso() {
@@ -27,11 +26,8 @@ export default function Progreso() {
   }, [userId]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Mi progreso" />
-      {loading ? null : (
-        <View style={styles.content}>
-          <View style={styles.statsRow}>
+    <Screen header={{ title: 'Mi progreso' }} scroll loading={loading} background="canvas">
+      <View style={styles.statsRow}>
             <Stat value={gam?.points ?? 0} label="Puntos" />
             <Stat value={gam?.current_streak ?? 0} label="Racha (dias)" />
             <Stat value={gam?.longest_streak ?? 0} label="Mejor racha" />
@@ -66,9 +62,7 @@ export default function Progreso() {
             Estos numeros los calcula el servidor a partir de tus check-ins; no se pueden alterar
             desde la app.
           </AppText>
-        </View>
-      )}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -99,8 +93,6 @@ function Avg({ label, v }: { label: string; v: number | null }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.canvas },
-  content: { padding: space.lg, gap: space.lg },
   statsRow: { flexDirection: 'row', gap: space.md - 2 },
   stat: { flex: 1, alignItems: 'center', paddingVertical: space.lg + 2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.lg - 2, marginTop: space.md + 2 },

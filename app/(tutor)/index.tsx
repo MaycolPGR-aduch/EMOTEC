@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { getTutorDashboard, type DashboardRow } from '@/lib/tutor';
 import type { AlertLevel } from '@/lib/alerts';
-import { AppText, Card, ScreenHeader } from '@/components/ui';
+import { AppText, Card, Screen } from '@/components/ui';
 import { color, radius, space } from '@/theme';
 
 const NIVEL_LABEL: Record<AlertLevel, string> = {
@@ -44,22 +43,32 @@ export default function TutorHome() {
   );
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScreenHeader
-        title="Mis estudiantes"
-        subtitle={profile?.full_name ?? profile?.email ?? undefined}
-        showClose={false}
-        right={
+    <Screen
+      header={{
+        title: 'Mis estudiantes',
+        subtitle: profile?.full_name ?? profile?.email ?? undefined,
+        showClose: false,
+        right: (
           <Link href="/ayuda">
             <AppText variant="body" weight="semibold" color={color.brand}>
               Ayuda
             </AppText>
           </Link>
-        }
-      />
-
-      {rows === null ? null : (
-        <View style={styles.content}>
+        ),
+      }}
+      scroll
+      loading={rows === null}
+      background="canvas"
+      footer={
+        <Pressable style={styles.logout} onPress={signOut}>
+          <AppText variant="body" weight="semibold" color={color.danger} align="center">
+            Cerrar sesion
+          </AppText>
+        </Pressable>
+      }
+    >
+      {rows && (
+        <>
           {rows.length === 0 && (
             <Card>
               <AppText variant="body" color={color.textSecondary} align="center">
@@ -95,21 +104,13 @@ export default function TutorHome() {
           <AppText variant="caption" color={color.textFaint} align="center">
             Ves indicadores y senales resumidas, no las respuestas privadas de cada estudiante.
           </AppText>
-        </View>
+        </>
       )}
-
-      <Pressable style={styles.logout} onPress={signOut}>
-        <AppText variant="body" weight="semibold" color={color.danger} align="center">
-          Cerrar sesion
-        </AppText>
-      </Pressable>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.canvas },
-  content: { padding: space.lg, gap: space.md - 2, flex: 1 },
   card: { gap: space.xs + 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   badge: { borderRadius: radius.lg, paddingHorizontal: space.md - 2, paddingVertical: space.xs },

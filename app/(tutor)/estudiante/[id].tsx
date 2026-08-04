@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSession } from '@/lib/session';
 import {
@@ -12,7 +11,7 @@ import {
   type TutorSummary,
 } from '@/lib/tutor';
 import { BarRow } from '@/components/charts';
-import { AppText, Button, Card, ScreenHeader } from '@/components/ui';
+import { AppText, Button, Card, Screen } from '@/components/ui';
 import { color, radius, space } from '@/theme';
 
 const REGLA_LABEL: Record<string, string> = {
@@ -73,13 +72,10 @@ export default function EstudianteDetalle() {
   const abiertas = alerts.filter((a) => a.status === 'abierta' || a.status === 'en_revision');
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Resumen del estudiante" />
-      {summary === null ? null : (
-        <View style={styles.content}>
-          <AppText variant="bodyStrong" color={color.textSecondary}>
-            Senales abiertas ({abiertas.length})
-          </AppText>
+    <Screen header={{ title: 'Resumen del estudiante' }} scroll loading={summary === null} background="canvas">
+      <AppText variant="bodyStrong" color={color.textSecondary}>
+        Senales abiertas ({abiertas.length})
+      </AppText>
           {abiertas.length === 0 && (
             <AppText variant="body" color={color.textMuted}>
               Ninguna senal abierta.
@@ -135,13 +131,11 @@ export default function EstudianteDetalle() {
             </AppText>
           )}
 
-          <AppText variant="caption" color={color.textFaint} align="center">
-            Ves indicadores agregados y la evidencia de cada senal. No tienes acceso a las respuestas
-            ni al texto que el estudiante escribe.
-          </AppText>
-        </View>
-      )}
-    </SafeAreaView>
+      <AppText variant="caption" color={color.textFaint} align="center">
+        Ves indicadores agregados y la evidencia de cada senal. No tienes acceso a las respuestas
+        ni al texto que el estudiante escribe.
+      </AppText>
+    </Screen>
   );
 }
 
@@ -165,8 +159,6 @@ function explicarEvidencia(a: TutorAlert): string {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.canvas },
-  content: { padding: space.lg, gap: space.md - 2 },
   section: { marginTop: space.sm },
   flex1: { flex: 1 },
   alertCard: { gap: space.xs + 2 },

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '@/lib/session';
 import {
   getLatestReport,
@@ -10,7 +9,7 @@ import {
 } from '@/lib/wellness';
 import { getHistory, type Checkin } from '@/lib/checkins';
 import { BarRow, WeekBars } from '@/components/charts';
-import { AppText, Card, ScreenHeader } from '@/components/ui';
+import { AppText, Card, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -78,11 +77,8 @@ export default function Reporte() {
       : [];
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScreenHeader title="Reporte semanal" />
-      {loading ? null : (
-        <View style={styles.content}>
-          {!report ? (
+    <Screen header={{ title: 'Reporte semanal' }} scroll loading={loading} background="canvas">
+      {!report ? (
             <Card>
               <AppText variant="body" color={color.textSecondary} align="center">
                 Aun no hay un reporte. Registra un check-in y tu resumen aparecera aqui.
@@ -158,15 +154,11 @@ export default function Reporte() {
               </AppText>
             </>
           )}
-        </View>
-      )}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: color.canvas },
-  content: { padding: space.lg, gap: space.md },
   block: { marginTop: space.md + 2 },
   segments: { marginTop: space.md, gap: space.lg },
   segment: { gap: space.xs },
