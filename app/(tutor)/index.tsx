@@ -1,17 +1,13 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link, useFocusEffect } from 'expo-router';
+import { Link, router, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { getTutorDashboard, type DashboardRow } from '@/lib/tutor';
 import type { AlertLevel } from '@/lib/alerts';
+import { AppText, Card, ScreenHeader } from '@/components/ui';
+import { color, radius, space } from '@/theme';
 
-const NIVEL_COLOR: Record<AlertLevel, string> = {
-  informativa: '#7a8a99',
-  preventiva: '#c9902a',
-  prioritaria: '#d96a2a',
-  critica: '#c0392b',
-};
 const NIVEL_LABEL: Record<AlertLevel, string> = {
   informativa: 'Informativa',
   preventiva: 'Preventiva',
@@ -49,98 +45,78 @@ export default function TutorHome() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Mis estudiantes</Text>
-          <Text style={styles.sub}>{profile?.full_name ?? profile?.email}</Text>
-        </View>
-        <Link href="/ayuda" asChild>
-          <Pressable>
-            <Text style={styles.link}>Ayuda</Text>
-          </Pressable>
-        </Link>
-      </View>
+      <ScreenHeader
+        title="Mis estudiantes"
+        subtitle={profile?.full_name ?? profile?.email ?? undefined}
+        showClose={false}
+        right={
+          <Link href="/ayuda">
+            <AppText variant="body" weight="semibold" color={color.brand}>
+              Ayuda
+            </AppText>
+          </Link>
+        }
+      />
 
-      {rows === null ? (
-        <ActivityIndicator style={{ marginTop: 40 }} />
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+      {rows === null ? null : (
+        <View style={styles.content}>
           {rows.length === 0 && (
-            <View style={styles.card}>
-              <Text style={styles.empty}>
+            <Card>
+              <AppText variant="body" color={color.textSecondary} align="center">
                 Aun no tienes estudiantes asignados. Un administrador debe asignarte.
-              </Text>
-            </View>
+              </AppText>
+            </Card>
           )}
 
           {rows.map((s) => (
-            <Link key={s.student_id} href={{ pathname: '/estudiante/[id]', params: { id: s.student_id } }} asChild>
-              <Pressable style={styles.card}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.name}>{s.full_name ?? 'Estudiante'}</Text>
-                  {s.open_alerts > 0 && s.max_level && (
-                    <View style={[styles.badge, { backgroundColor: NIVEL_COLOR[s.max_level] }]}>
-                      <Text style={styles.badgeText}>
-                        {s.open_alerts} · {NIVEL_LABEL[s.max_level]}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.meta}>Ultimo check-in: {diasDesde(s.last_checkin)}</Text>
-              </Pressable>
-            </Link>
+            <Card
+              key={s.student_id}
+              onPress={() => router.push({ pathname: '/estudiante/[id]', params: { id: s.student_id } })}
+              style={styles.card}
+            >
+              <View style={styles.cardTop}>
+                <AppText variant="bodyStrong" color={color.textStrong}>
+                  {s.full_name ?? 'Estudiante'}
+                </AppText>
+                {s.open_alerts > 0 && s.max_level && (
+                  <View style={[styles.badge, { backgroundColor: color.alert[s.max_level] }]}>
+                    <AppText variant="caption" weight="bold" color={color.onBrand}>
+                      {s.open_alerts} · {NIVEL_LABEL[s.max_level]}
+                    </AppText>
+                  </View>
+                )}
+              </View>
+              <AppText variant="small" color={color.textMuted}>
+                Ultimo check-in: {diasDesde(s.last_checkin)}
+              </AppText>
+            </Card>
           ))}
 
-          <Text style={styles.note}>
+          <AppText variant="caption" color={color.textFaint} align="center">
             Ves indicadores y senales resumidas, no las respuestas privadas de cada estudiante.
-          </Text>
-        </ScrollView>
+          </AppText>
+        </View>
       )}
 
       <Pressable style={styles.logout} onPress={signOut}>
-        <Text style={styles.logoutText}>Cerrar sesion</Text>
+        <AppText variant="body" weight="semibold" color={color.danger} align="center">
+          Cerrar sesion
+        </AppText>
       </Pressable>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f6f8fa' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-  },
-  title: { fontSize: 20, fontWeight: '700', color: '#208AEF' },
-  sub: { fontSize: 12, color: '#999' },
-  link: { color: '#208AEF', fontSize: 15, fontWeight: '600' },
-  content: { padding: 16, gap: 10 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#eef1f4',
-    gap: 6,
-  },
+  safe: { flex: 1, backgroundColor: color.canvas },
+  content: { padding: space.lg, gap: space.md - 2, flex: 1 },
+  card: { gap: space.xs + 2 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  name: { fontSize: 16, fontWeight: '700', color: '#222' },
-  badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
-  meta: { fontSize: 13, color: '#888' },
-  empty: { fontSize: 15, color: '#666', textAlign: 'center' },
-  note: { fontSize: 12, color: '#9aa5b1', textAlign: 'center', marginTop: 8, paddingHorizontal: 8 },
+  badge: { borderRadius: radius.lg, paddingHorizontal: space.md - 2, paddingVertical: space.xs },
   logout: {
-    paddingVertical: 14,
-    alignItems: 'center',
+    paddingVertical: space.md + 2,
     borderTopWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#fff',
+    borderColor: color.border,
+    backgroundColor: color.surface,
   },
-  logoutText: { color: '#c0392b', fontSize: 15, fontWeight: '600' },
 });

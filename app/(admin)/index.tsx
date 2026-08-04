@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
@@ -13,6 +13,8 @@ import {
   type Assignment,
   type Role,
 } from '@/lib/admin';
+import { AppText, Button, Card, Chip, Screen } from '@/components/ui';
+import { color, space } from '@/theme';
 
 const ROLES: Role[] = ['estudiante', 'tutor', 'admin'];
 
@@ -32,11 +34,7 @@ export default function AdminHome() {
     });
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
+  useFocusEffect(useCallback(() => load(), [load]));
 
   async function onSetRole(u: AdminUser, role: Role) {
     if (u.role === role) return;
@@ -60,7 +58,7 @@ export default function AdminHome() {
     }
   }
 
-  async function onEnd(a: Assignment) {
+  function onEnd(a: Assignment) {
     Alert.alert('Terminar asignacion', 'El tutor dejara de ver a este estudiante. Queda registro.', [
       { text: 'Cancelar', style: 'cancel' },
       {
@@ -75,178 +73,135 @@ export default function AdminHome() {
     ]);
   }
 
-  if (users === null) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
-
-  const students = users.filter((u) => u.role === 'estudiante');
-  const tutors = users.filter((u) => u.role === 'tutor');
+  const students = users?.filter((u) => u.role === 'estudiante') ?? [];
+  const tutors = users?.filter((u) => u.role === 'tutor') ?? [];
   const nameOf = (id: string) => {
-    const u = users.find((x) => x.id === id);
+    const u = users?.find((x) => x.id === id);
     return u ? (u.full_name ?? u.email) : id.slice(0, 8);
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Administracion</Text>
-          <Text style={styles.sub}>{profile?.email}</Text>
-        </View>
-        <Link href="/ayuda" asChild>
-          <Pressable>
-            <Text style={styles.link}>Ayuda</Text>
-          </Pressable>
-        </Link>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Usuarios y roles */}
-        <Text style={styles.section}>Usuarios ({users.length})</Text>
-        {users.map((u) => (
-          <View key={u.id} style={styles.card}>
-            <Text style={styles.name}>{u.full_name ?? '(sin nombre)'}</Text>
-            <Text style={styles.email}>{u.email}</Text>
-            <View style={styles.chips}>
-              {ROLES.map((r) => (
-                <Pressable
-                  key={r}
-                  style={[styles.chip, u.role === r && styles.chipOn]}
-                  onPress={() => onSetRole(u, r)}
-                  disabled={busy}
-                >
-                  <Text style={[styles.chipText, u.role === r && styles.chipTextOn]}>{r}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ))}
-
-        {/* Asignar tutor */}
-        <Text style={styles.section}>Asignar tutor a estudiante</Text>
-        <View style={styles.card}>
-          <Text style={styles.label}>Estudiante</Text>
+    <Screen
+      header={{
+        title: 'Administracion',
+        subtitle: profile?.email ?? undefined,
+        showClose: false,
+        right: (
+          <Link href="/ayuda">
+            <AppText variant="body" weight="semibold" color={color.brand}>
+              Ayuda
+            </AppText>
+          </Link>
+        ),
+      }}
+      scroll
+      loading={users === null}
+      background="canvas"
+    >
+      <AppText variant="bodyStrong" color={color.textSecondary}>
+        Usuarios ({users?.length ?? 0})
+      </AppText>
+      {users?.map((u) => (
+        <Card key={u.id} style={styles.card}>
+          <AppText variant="bodyStrong" color={color.textStrong}>
+            {u.full_name ?? '(sin nombre)'}
+          </AppText>
+          <AppText variant="small" color={color.textMuted}>
+            {u.email}
+          </AppText>
           <View style={styles.chips}>
-            {students.length === 0 && <Text style={styles.muted}>No hay estudiantes.</Text>}
-            {students.map((s) => (
-              <Pressable
-                key={s.id}
-                style={[styles.chip, selStudent === s.id && styles.chipOn]}
-                onPress={() => setSelStudent(selStudent === s.id ? null : s.id)}
-              >
-                <Text style={[styles.chipText, selStudent === s.id && styles.chipTextOn]}>
-                  {s.full_name ?? s.email}
-                </Text>
-              </Pressable>
+            {ROLES.map((r) => (
+              <Chip key={r} label={r} size="sm" selected={u.role === r} onPress={() => onSetRole(u, r)} disabled={busy} />
             ))}
           </View>
+        </Card>
+      ))}
 
-          <Text style={styles.label}>Tutor</Text>
-          <View style={styles.chips}>
-            {tutors.length === 0 && (
-              <Text style={styles.muted}>
-                No hay tutores. Cambia el rol de alguien a &quot;tutor&quot; arriba.
-              </Text>
-            )}
-            {tutors.map((t) => (
-              <Pressable
-                key={t.id}
-                style={[styles.chip, selTutor === t.id && styles.chipOn]}
-                onPress={() => setSelTutor(selTutor === t.id ? null : t.id)}
-              >
-                <Text style={[styles.chipText, selTutor === t.id && styles.chipTextOn]}>
-                  {t.full_name ?? t.email}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Pressable
-            style={[styles.button, (!selStudent || !selTutor || busy) && styles.buttonDisabled]}
-            onPress={onAssign}
-            disabled={!selStudent || !selTutor || busy}
-          >
-            <Text style={styles.buttonText}>Asignar</Text>
-          </Pressable>
+      <AppText variant="bodyStrong" color={color.textSecondary} style={styles.section}>
+        Asignar tutor a estudiante
+      </AppText>
+      <Card style={styles.card}>
+        <AppText variant="small" weight="semibold" color={color.textSecondary}>
+          Estudiante
+        </AppText>
+        <View style={styles.chips}>
+          {students.length === 0 && (
+            <AppText variant="small" color={color.textMuted}>
+              No hay estudiantes.
+            </AppText>
+          )}
+          {students.map((s) => (
+            <Chip
+              key={s.id}
+              label={s.full_name ?? s.email}
+              size="sm"
+              selected={selStudent === s.id}
+              onPress={() => setSelStudent(selStudent === s.id ? null : s.id)}
+            />
+          ))}
         </View>
 
-        {/* Asignaciones activas */}
-        <Text style={styles.section}>Asignaciones activas ({assignments.length})</Text>
-        {assignments.length === 0 && <Text style={styles.muted}>Ninguna todavia.</Text>}
-        {assignments.map((a) => (
-          <View key={a.id} style={styles.card}>
-            <Text style={styles.name}>{nameOf(a.student_id)}</Text>
-            <Text style={styles.email}>tutor: {nameOf(a.tutor_id)}</Text>
-            <Pressable style={styles.endBtn} onPress={() => onEnd(a)}>
-              <Text style={styles.endText}>Terminar asignacion</Text>
-            </Pressable>
-          </View>
-        ))}
+        <AppText variant="small" weight="semibold" color={color.textSecondary}>
+          Tutor
+        </AppText>
+        <View style={styles.chips}>
+          {tutors.length === 0 && (
+            <AppText variant="small" color={color.textMuted}>
+              No hay tutores. Cambia el rol de alguien a &quot;tutor&quot; arriba.
+            </AppText>
+          )}
+          {tutors.map((t) => (
+            <Chip
+              key={t.id}
+              label={t.full_name ?? t.email}
+              size="sm"
+              selected={selTutor === t.id}
+              onPress={() => setSelTutor(selTutor === t.id ? null : t.id)}
+            />
+          ))}
+        </View>
 
-        <Pressable style={styles.logout} onPress={signOut}>
-          <Text style={styles.logoutText}>Cerrar sesion</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+        <Button title="Asignar" size="md" onPress={onAssign} disabled={!selStudent || !selTutor || busy} style={styles.assign} />
+      </Card>
+
+      <AppText variant="bodyStrong" color={color.textSecondary} style={styles.section}>
+        Asignaciones activas ({assignments.length})
+      </AppText>
+      {assignments.length === 0 && (
+        <AppText variant="small" color={color.textMuted}>
+          Ninguna todavia.
+        </AppText>
+      )}
+      {assignments.map((a) => (
+        <Card key={a.id} style={styles.card}>
+          <AppText variant="bodyStrong" color={color.textStrong}>
+            {nameOf(a.student_id)}
+          </AppText>
+          <AppText variant="small" color={color.textMuted}>
+            tutor: {nameOf(a.tutor_id)}
+          </AppText>
+          <Pressable onPress={() => onEnd(a)} style={styles.end}>
+            <AppText variant="small" weight="semibold" color={color.warning}>
+              Terminar asignacion
+            </AppText>
+          </Pressable>
+        </Card>
+      ))}
+
+      <Pressable style={styles.logout} onPress={signOut}>
+        <AppText variant="body" weight="semibold" color={color.danger} align="center">
+          Cerrar sesion
+        </AppText>
+      </Pressable>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f6f8fa' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-  },
-  title: { fontSize: 20, fontWeight: '700', color: '#208AEF' },
-  sub: { fontSize: 12, color: '#999' },
-  link: { color: '#208AEF', fontSize: 15, fontWeight: '600' },
-  content: { padding: 16, gap: 10 },
-  section: { fontSize: 15, fontWeight: '700', color: '#555', marginTop: 12 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#eef1f4',
-    gap: 6,
-  },
-  name: { fontSize: 15, fontWeight: '700', color: '#222' },
-  email: { fontSize: 13, color: '#888' },
-  label: { fontSize: 13, fontWeight: '600', color: '#555', marginTop: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#c9d6e5',
-  },
-  chipOn: { backgroundColor: '#208AEF', borderColor: '#208AEF' },
-  chipText: { fontSize: 13, color: '#5a6b7b' },
-  chipTextOn: { color: '#fff', fontWeight: '600' },
-  muted: { fontSize: 13, color: '#999' },
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: 'center',
-    marginTop: 14,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  endBtn: { marginTop: 8 },
-  endText: { color: '#a5811a', fontSize: 13, fontWeight: '600' },
-  logout: { alignItems: 'center', paddingVertical: 18 },
-  logoutText: { color: '#c0392b', fontSize: 15, fontWeight: '600' },
+  card: { gap: space.xs + 2 },
+  section: { marginTop: space.md },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginTop: space.xs },
+  assign: { marginTop: space.md },
+  end: { marginTop: space.xs },
+  logout: { paddingVertical: space.lg },
 });

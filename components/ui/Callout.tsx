@@ -25,7 +25,7 @@ export function Callout({ tone = 'info', children }: CalloutProps) {
 const TONES: Record<Tone, { bg: string; fg: string }> = {
   privacy: { bg: colors.successSurface, fg: colors.success },
   info: { bg: colors.surfaceBrand, fg: colors.brandInk },
-  warning: { bg: colors.warningSurface, fg: '#8a5a1a' },
+  warning: { bg: colors.warningSurface, fg: colors.warning },
 };
 
 const styles = StyleSheet.create({

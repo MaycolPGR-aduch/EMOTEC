@@ -26,6 +26,7 @@ export const color = {
   danger: '#c0392b',
   success: '#1e7e34',
   successSurface: '#e6f4ea',
+  warning: '#a5811a', // texto ambar (acciones de precaucion: revocar, terminar)
   warningSurface: '#fdf0e3',
   star: '#f5b301',
 

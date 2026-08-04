@@ -1,4 +1,10 @@
-import { StyleSheet, TextInput, View } from 'react-native';
+import {
+  StyleSheet,
+  TextInput,
+  View,
+  type KeyboardTypeOptions,
+  type TextInputProps,
+} from 'react-native';
 import { color as colors, radius, space, text as textVariants } from '@/theme';
 import { AppText } from './Text';
 
@@ -11,6 +17,10 @@ type FieldProps = {
   maxLength?: number;
   editable?: boolean;
   autoFocus?: boolean;
+  secureTextEntry?: boolean;
+  keyboardType?: KeyboardTypeOptions;
+  autoCapitalize?: TextInputProps['autoCapitalize'];
+  autoComplete?: TextInputProps['autoComplete'];
 };
 
 // Input etiquetado. Reemplaza los TextInput ad-hoc de gratitud/caja/checkin.
@@ -23,6 +33,10 @@ export function Field({
   maxLength,
   editable = true,
   autoFocus = false,
+  secureTextEntry = false,
+  keyboardType,
+  autoCapitalize,
+  autoComplete,
 }: FieldProps) {
   return (
     <View style={styles.wrap}>
@@ -41,6 +55,10 @@ export function Field({
         maxLength={maxLength}
         editable={editable}
         autoFocus={autoFocus}
+        secureTextEntry={secureTextEntry}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoComplete={autoComplete}
       />
     </View>
   );
