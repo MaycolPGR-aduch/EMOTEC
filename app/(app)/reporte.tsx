@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import {
   getLatestReport,
@@ -11,6 +10,8 @@ import {
 } from '@/lib/wellness';
 import { getHistory, type Checkin } from '@/lib/checkins';
 import { BarRow, WeekBars } from '@/components/charts';
+import { AppText, Card, ScreenHeader } from '@/components/ui';
+import { color, space } from '@/theme';
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 const DIAS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -64,18 +65,9 @@ export default function Reporte() {
       .finally(() => setLoading(false));
   }, [userId]);
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
-
   const current = weeks[0] ?? null;
   const previous = weeks[1] ?? null;
 
-  // Ánimo día a día de la semana del reporte (lunes a domingo).
   const days =
     report != null
       ? Array.from({ length: 7 }, (_, i) => {
@@ -87,120 +79,95 @@ export default function Reporte() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Reporte semanal</Text>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.close}>Cerrar</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader title="Reporte semanal" />
+      {loading ? null : (
+        <View style={styles.content}>
+          {!report ? (
+            <Card>
+              <AppText variant="body" color={color.textSecondary} align="center">
+                Aun no hay un reporte. Registra un check-in y tu resumen aparecera aqui.
+              </AppText>
+            </Card>
+          ) : (
+            <>
+              <AppText variant="body" color={color.textMuted} align="center">
+                Semana del {fechaCorta(report.period_start)} al {fechaCorta(report.period_end)}
+              </AppText>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {!report ? (
-          <View style={styles.card}>
-            <Text style={styles.empty}>
-              Aun no hay un reporte. Registra un check-in y tu resumen aparecera aqui.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.period}>
-              Semana del {fechaCorta(report.period_start)} al {fechaCorta(report.period_end)}
-            </Text>
-
-            {/* Resumen numerico */}
-            {current && (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Tus promedios (escala 1 a 5)</Text>
-                <Text style={styles.cardSub}>
-                  {current.checkin_count} check-in(s) · {Math.round(current.adherence_pct ?? 0)}% de
-                  la semana
-                </Text>
-                <View style={{ marginTop: 14 }}>
-                  {BARRAS.map((b) => {
-                    const v = current[b.key] as number | null;
-                    const prev = previous ? (previous[b.key] as number | null) : null;
-                    const delta = v != null && prev != null ? v - prev : null;
-                    return <BarRow key={b.key} label={b.label} value={v} delta={delta} />;
-                  })}
-                </View>
-                {previous && (
-                  <Text style={styles.legend}>
-                    El numero pequeno compara con la semana del {fechaCorta(previous.period_start)}.
-                  </Text>
-                )}
-              </View>
-            )}
-
-            {/* Ánimo día a día */}
-            {days.length > 0 && (
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Tu animo dia a dia</Text>
-                <Text style={styles.cardSub}>Los dias sin registro aparecen vacios.</Text>
-                <View style={{ marginTop: 14 }}>
-                  <WeekBars days={days} />
-                </View>
-              </View>
-            )}
-
-            {/* Texto orientativo */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Que dice tu semana</Text>
-              <View style={{ marginTop: 12, gap: 16 }}>
-                {report.content.map((seg) => (
-                  <View key={seg.segment_id} style={styles.segment}>
-                    <Text style={styles.text}>{seg.text}</Text>
-                    {seg.source_indicator && (
-                      <Text style={styles.source}>
-                        basado en {INDICADOR[seg.source_indicator] ?? seg.source_indicator}
-                        {seg.value != null ? `: ${seg.value}` : ''}
-                      </Text>
-                    )}
+              {current && (
+                <Card>
+                  <AppText variant="h3" color={color.textStrong}>
+                    Tus promedios (escala 1 a 5)
+                  </AppText>
+                  <AppText variant="small" color={color.textMuted}>
+                    {current.checkin_count} check-in(s) · {Math.round(current.adherence_pct ?? 0)}% de la semana
+                  </AppText>
+                  <View style={styles.block}>
+                    {BARRAS.map((b) => {
+                      const v = current[b.key] as number | null;
+                      const prev = previous ? (previous[b.key] as number | null) : null;
+                      const delta = v != null && prev != null ? v - prev : null;
+                      return <BarRow key={b.key} label={b.label} value={v} delta={delta} />;
+                    })}
                   </View>
-                ))}
-              </View>
-            </View>
+                  {previous && (
+                    <AppText variant="caption" color={color.textFaint}>
+                      El numero pequeno compara con la semana del {fechaCorta(previous.period_start)}.
+                    </AppText>
+                  )}
+                </Card>
+              )}
 
-            <Text style={styles.note}>
-              Generado con la plantilla {report.template_code} v{report.template_version}. Cada
-              frase indica el dato que la origino.
-            </Text>
-          </>
-        )}
-      </ScrollView>
+              {days.length > 0 && (
+                <Card>
+                  <AppText variant="h3" color={color.textStrong}>
+                    Tu animo dia a dia
+                  </AppText>
+                  <AppText variant="small" color={color.textMuted}>
+                    Los dias sin registro aparecen vacios.
+                  </AppText>
+                  <View style={styles.block}>
+                    <WeekBars days={days} />
+                  </View>
+                </Card>
+              )}
+
+              <Card>
+                <AppText variant="h3" color={color.textStrong}>
+                  Que dice tu semana
+                </AppText>
+                <View style={styles.segments}>
+                  {report.content.map((seg) => (
+                    <View key={seg.segment_id} style={styles.segment}>
+                      <AppText variant="bodyStrong" color={color.textDefault} weight="regular">
+                        {seg.text}
+                      </AppText>
+                      {seg.source_indicator && (
+                        <AppText variant="caption" color={color.textFaint}>
+                          basado en {INDICADOR[seg.source_indicator] ?? seg.source_indicator}
+                          {seg.value != null ? `: ${seg.value}` : ''}
+                        </AppText>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              </Card>
+
+              <AppText variant="caption" color={color.textFaint} align="center">
+                Generado con la plantilla {report.template_code} v{report.template_version}. Cada frase indica el dato que la origino.
+              </AppText>
+            </>
+          )}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#f6f8fa' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-  },
-  title: { fontSize: 20, fontWeight: '700', color: '#208AEF' },
-  close: { color: '#888', fontSize: 15 },
-  content: { padding: 16, gap: 12 },
-  period: { fontSize: 14, color: '#888', textAlign: 'center' },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#eef1f4',
-  },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#333' },
-  cardSub: { fontSize: 13, color: '#888', marginTop: 2 },
-  legend: { fontSize: 11, color: '#9aa5b1', marginTop: 6 },
-  segment: { gap: 4 },
-  text: { fontSize: 16, color: '#333', lineHeight: 24 },
-  source: { fontSize: 12, color: '#9aa5b1', fontStyle: 'italic' },
-  empty: { fontSize: 15, color: '#666', textAlign: 'center' },
-  note: { fontSize: 12, color: '#9aa5b1', textAlign: 'center', paddingHorizontal: 8 },
+  safe: { flex: 1, backgroundColor: color.canvas },
+  content: { padding: space.lg, gap: space.md },
+  block: { marginTop: space.md + 2 },
+  segments: { marginTop: space.md, gap: space.lg },
+  segment: { gap: space.xs },
 });

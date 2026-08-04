@@ -1,19 +1,10 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { logActivitySession, saveGratitude } from '@/lib/activities';
+import { AppText, Button, Callout, Field, Screen } from '@/components/ui';
+import { color, space } from '@/theme';
 
 export default function Gratitud() {
   const { session } = useSession();
@@ -29,10 +20,7 @@ export default function Gratitud() {
   }
 
   async function onSave() {
-    if (!hayAlgo) {
-      setError('Escribe al menos una cosa buena.');
-      return;
-    }
+    if (!hayAlgo) return setError('Escribe al menos una cosa buena.');
     setError(null);
     setSaving(true);
     const started = new Date();
@@ -44,80 +32,42 @@ export default function Gratitud() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Tres cosas buenas</Text>
-          <Text style={styles.subtitle}>
-            Anota hasta tres cosas buenas de tu dia, por pequenas que sean. No tienen que ser
-            grandes.
-          </Text>
+    <Screen scroll keyboardAvoiding background="surface" contentContainerStyle={styles.content}>
+      <AppText variant="h1" color={color.brand}>
+        Tres cosas buenas
+      </AppText>
+      <AppText variant="body" color={color.textSecondary}>
+        Anota hasta tres cosas buenas de tu dia, por pequenas que sean. No tienen que ser grandes.
+      </AppText>
 
-          {items.map((v, i) => (
-            <TextInput
-              key={i}
-              style={styles.input}
-              placeholder={`Cosa buena ${i + 1}`}
-              value={v}
-              onChangeText={(t) => setItem(i, t)}
-              maxLength={300}
-              editable={!saving}
-            />
-          ))}
+      {items.map((v, i) => (
+        <Field
+          key={i}
+          value={v}
+          onChangeText={(t) => setItem(i, t)}
+          placeholder={`Cosa buena ${i + 1}`}
+          maxLength={300}
+          editable={!saving}
+        />
+      ))}
 
-          <Text style={styles.privacy}>
-            Lo que escribas aqui es privado. Tu tutor no lo ve, igual que tu diario.
-          </Text>
+      <Callout tone="privacy">
+        Lo que escribas aqui es privado. Tu tutor no lo ve, igual que tu diario.
+      </Callout>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <AppText variant="body" color={color.danger}>
+          {error}
+        </AppText>
+      )}
 
-          <Pressable
-            style={[styles.button, (!hayAlgo || saving) && styles.buttonDisabled]}
-            onPress={onSave}
-            disabled={!hayAlgo || saving}
-          >
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Guardar</Text>
-            )}
-          </Pressable>
-          <Pressable style={styles.cancel} onPress={() => router.back()} disabled={saving}>
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </Pressable>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <Button title="Guardar" onPress={onSave} loading={saving} disabled={!hayAlgo} style={styles.save} />
+      <Button title="Cancelar" variant="ghost" onPress={() => router.back()} disabled={saving} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  flex: { flex: 1 },
-  content: { padding: 24, gap: 12 },
-  title: { fontSize: 24, fontWeight: '700', color: '#208AEF' },
-  subtitle: { fontSize: 15, color: '#666', lineHeight: 22, marginBottom: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 16,
-  },
-  privacy: { fontSize: 12, color: '#1e7e34', marginTop: 4 },
-  error: { color: '#c0392b', fontSize: 14 },
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  cancel: { alignItems: 'center', paddingVertical: 12 },
-  cancelText: { color: '#888', fontSize: 15 },
+  content: { gap: space.md },
+  save: { marginTop: space.sm },
 });

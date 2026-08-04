@@ -1,14 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import {
@@ -19,17 +10,11 @@ import {
   type CheckinValues,
 } from '@/lib/checkins';
 import { recompute } from '@/lib/wellness';
+import { AppText, Button, Callout, Field, IntensityScale, Screen } from '@/components/ui';
+import { color, space } from '@/theme';
 
-type Dim = {
-  key: keyof CheckinValues;
-  label: string;
-  low: string;
-  high: string;
-};
+type Dim = { key: keyof CheckinValues; label: string; low: string; high: string };
 
-// Orden y anclas de cada indicador. Las anclas ayudan a interpretar la escala
-// (en unos "5" es bueno, en otros "5" es mucho): el numero es neutro, el texto
-// da el sentido.
 const DIMS: Dim[] = [
   { key: 'mood', label: 'Animo', low: 'muy bajo', high: 'muy bueno' },
   { key: 'stress', label: 'Estres', low: 'nada', high: 'muchisimo' },
@@ -52,9 +37,7 @@ export default function Checkin() {
 
   useEffect(() => {
     getLatestCheckin(userId).then((latest) => {
-      if (latest && latest.local_date === todayStr()) {
-        setAlreadyToday({ id: latest.id });
-      }
+      if (latest && latest.local_date === todayStr()) setAlreadyToday({ id: latest.id });
       setLoading(false);
     });
   }, [userId]);
@@ -62,183 +45,115 @@ export default function Checkin() {
   const complete = DIMS.every((d) => values[d.key] != null);
 
   async function onSave() {
-    if (!complete) {
-      setError('Responde los 6 indicadores antes de guardar.');
-      return;
-    }
+    if (!complete) return setError('Responde los 6 indicadores antes de guardar.');
     setError(null);
     setSaving(true);
     const res = await createCheckin(userId, values as CheckinValues, note);
-    setSaving(false);
     if (res.duplicate) {
+      setSaving(false);
       setError('Ya registraste tu check-in de hoy.');
       setAlreadyToday({ id: '' });
       return;
     }
     if (res.error) {
+      setSaving(false);
       setError(res.error);
       return;
     }
-    // Dispara el recalculo de indicadores/puntos/racha (best-effort: si la
-    // funcion aun no esta desplegada, el check-in ya quedo guardado igual).
     await recompute();
+    setSaving(false);
     router.back();
   }
 
   async function onRedo() {
-    if (!alreadyToday?.id) {
-      setAlreadyToday(null);
-      return;
-    }
+    if (!alreadyToday?.id) return setAlreadyToday(null);
     setSaving(true);
     const res = await deleteCheckin(alreadyToday.id);
     setSaving(false);
-    if (res.error) {
-      setError(res.error);
-      return;
-    }
-    setAlreadyToday(null); // muestra el formulario en blanco
+    if (res.error) setError(res.error);
+    else setAlreadyToday(null);
   }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator />
-      </SafeAreaView>
-    );
-  }
+  if (loading) return <Screen loading background="surface" />;
 
   if (alreadyToday) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.doneWrap}>
-          <Text style={styles.doneTitle}>Ya hiciste tu check-in de hoy</Text>
-          <Text style={styles.doneSub}>Vuelve manana para seguir tu evolucion.</Text>
-          <Pressable style={styles.button} onPress={() => router.back()}>
-            <Text style={styles.buttonText}>Volver</Text>
-          </Pressable>
-          <Pressable style={styles.linkBtn} onPress={onRedo} disabled={saving}>
-            <Text style={styles.linkText}>{saving ? 'Rehaciendo...' : 'Rehacer el de hoy'}</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
+      <Screen background="surface" center contentContainerStyle={styles.done}>
+        <AppText variant="hero" color={color.success} align="center">
+          Ya hiciste tu check-in de hoy
+        </AppText>
+        <AppText variant="body" color={color.textSecondary} align="center">
+          Vuelve manana para seguir tu evolucion.
+        </AppText>
+        <Button title="Volver" onPress={() => router.back()} style={styles.top} />
+        <Button
+          title={saving ? 'Rehaciendo...' : 'Rehacer el de hoy'}
+          variant="ghost"
+          onPress={onRedo}
+          disabled={saving}
+        />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Como estas hoy?</Text>
-        <Text style={styles.subtitle}>Toma menos de un minuto.</Text>
+    <Screen scroll keyboardAvoiding background="surface" contentContainerStyle={styles.content}>
+      <AppText variant="hero" color={color.brand}>
+        Como estas hoy?
+      </AppText>
+      <AppText variant="body" color={color.textSecondary}>
+        Toma menos de un minuto.
+      </AppText>
 
-        {DIMS.map((d) => (
-          <View key={d.key} style={styles.dim}>
-            <Text style={styles.dimLabel}>{d.label}</Text>
-            <View style={styles.scale}>
-              {[1, 2, 3, 4, 5].map((n) => {
-                const selected = values[d.key] === n;
-                return (
-                  <Pressable
-                    key={n}
-                    style={[styles.dot, selected && styles.dotOn]}
-                    onPress={() => setValues((v) => ({ ...v, [d.key]: n }))}
-                  >
-                    <Text style={[styles.dotText, selected && styles.dotTextOn]}>{n}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <View style={styles.anchors}>
-              <Text style={styles.anchor}>{d.low}</Text>
-              <Text style={styles.anchor}>{d.high}</Text>
-            </View>
+      {DIMS.map((d) => (
+        <View key={d.key} style={styles.dim}>
+          <AppText variant="bodyStrong" color={color.textStrong}>
+            {d.label}
+          </AppText>
+          <IntensityScale value={values[d.key] ?? null} onChange={(n) => setValues((v) => ({ ...v, [d.key]: n }))} min={1} max={5} />
+          <View style={styles.anchors}>
+            <AppText variant="caption" color={color.textFaint}>
+              {d.low}
+            </AppText>
+            <AppText variant="caption" color={color.textFaint}>
+              {d.high}
+            </AppText>
           </View>
-        ))}
+        </View>
+      ))}
 
-        <Text style={styles.noteLabel}>Algo que quieras anotar? (opcional)</Text>
-        <TextInput
-          style={styles.noteInput}
-          placeholder="Escribe libremente..."
-          multiline
+      <View style={styles.note}>
+        <Field
+          label="Algo que quieras anotar? (opcional)"
           value={note}
           onChangeText={setNote}
+          placeholder="Escribe libremente..."
+          multiline
           maxLength={2000}
           editable={!saving}
         />
-        <Text style={styles.notePrivacy}>
-          Tu texto es privado. Tu tutor solo ve resumenes, nunca lo que escribes aqui.
-        </Text>
+      </View>
+      <Callout tone="privacy">
+        Tu texto es privado. Tu tutor solo ve resumenes, nunca lo que escribes aqui.
+      </Callout>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+      {error && (
+        <AppText variant="body" color={color.danger}>
+          {error}
+        </AppText>
+      )}
 
-        <Pressable
-          style={[styles.button, (!complete || saving) && styles.buttonDisabled]}
-          onPress={onSave}
-          disabled={!complete || saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Guardar check-in</Text>
-          )}
-        </Pressable>
-
-        <Pressable style={styles.linkBtn} onPress={() => router.back()} disabled={saving}>
-          <Text style={styles.linkText}>Cancelar</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+      <Button title="Guardar check-in" onPress={onSave} loading={saving} disabled={!complete} style={styles.top} />
+      <Button title="Cancelar" variant="ghost" onPress={() => router.back()} disabled={saving} />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
-  content: { paddingHorizontal: 24, paddingVertical: 16, gap: 4 },
-  title: { fontSize: 26, fontWeight: '700', color: '#208AEF' },
-  subtitle: { fontSize: 14, color: '#666', marginBottom: 12 },
-  dim: { marginTop: 14 },
-  dimLabel: { fontSize: 16, fontWeight: '600', color: '#222', marginBottom: 8 },
-  scale: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  dot: {
-    flex: 1,
-    aspectRatio: 1,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#c9d6e5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dotOn: { backgroundColor: '#208AEF', borderColor: '#208AEF' },
-  dotText: { fontSize: 16, color: '#5a6b7b', fontWeight: '600' },
-  dotTextOn: { color: '#fff' },
-  anchors: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  anchor: { fontSize: 11, color: '#9aa5b1' },
-  noteLabel: { fontSize: 15, fontWeight: '600', color: '#222', marginTop: 22 },
-  noteInput: {
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    minHeight: 90,
-    textAlignVertical: 'top',
-    marginTop: 8,
-  },
-  notePrivacy: { fontSize: 12, color: '#1e7e34', marginTop: 6 },
-  error: { color: '#c0392b', fontSize: 14, marginTop: 12 },
-  button: {
-    backgroundColor: '#208AEF',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  linkBtn: { alignItems: 'center', paddingVertical: 12 },
-  linkText: { color: '#888', fontSize: 15 },
-  doneWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 12 },
-  doneTitle: { fontSize: 22, fontWeight: '700', color: '#1e7e34', textAlign: 'center' },
-  doneSub: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 12 },
+  content: { gap: space.xs },
+  dim: { marginTop: space.md, gap: space.sm },
+  anchors: { flexDirection: 'row', justifyContent: 'space-between' },
+  note: { marginTop: space.lg },
+  top: { marginTop: space.lg },
+  done: { gap: space.md, paddingHorizontal: space.xxl },
 });

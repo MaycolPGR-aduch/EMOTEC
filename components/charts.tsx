@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { color } from '@/theme';
 
 // Graficos hechos con vistas nativas: sin librerias, funcionan en Expo Go.
 //
@@ -7,7 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 // rojo convertiria un acompanamiento en una evaluacion -- justo lo que la
 // propuesta pide evitar. El dato se muestra; el juicio no.
 
-const BLUE = '#208AEF';
+const BLUE = color.brand;
 
 export function BarRow({
   label,
