@@ -76,6 +76,39 @@ export function WeekBars({
   );
 }
 
+// Tendencia por semana. Igual que WeekBars pero el eje son semanas, no dias, y
+// admite escala 0-10 o 1-5 segun el indicador.
+export function TrendBars({
+  points,
+  max = 5,
+}: {
+  points: { label: string; value: number | null }[];
+  max?: number;
+}) {
+  return (
+    <View style={styles.weekWrap}>
+      {points.map((p, i) => {
+        const pct = p.value == null ? 0 : Math.max(0.06, Math.min(1, p.value / max));
+        return (
+          <View key={i} style={styles.dayCol}>
+            <Text style={styles.dayValue}>{p.value == null ? '' : p.value.toFixed(1)}</Text>
+            <View style={styles.dayTrack}>
+              <View
+                style={[
+                  styles.dayFill,
+                  { height: `${pct * 100}%` },
+                  p.value == null && styles.dayEmpty,
+                ]}
+              />
+            </View>
+            <Text style={styles.dayLabel}>{p.label}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   rowLabel: { width: 96, fontSize: 13, color: '#555' },
