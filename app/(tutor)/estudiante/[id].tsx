@@ -131,6 +131,35 @@ export default function EstudianteDetalle() {
             </AppText>
           )}
 
+      {/* Uso de actividades: solo constancia, utilidad y tipo. Nunca cuales
+          actividades concretas ni su contenido. */}
+      {week && (week.activity_days > 0 || week.emo_entries_count > 0) && (
+        <>
+          <AppText variant="bodyStrong" color={color.textSecondary} style={styles.section}>
+            Uso de actividades
+          </AppText>
+          <Card>
+            <AppText variant="small" color={color.textMuted}>
+              {week.activity_days} dia(s) con actividad · {Math.round(week.activity_adherence_pct ?? 0)}% de la semana
+              {week.activity_rating_avg != null ? ` · valoracion ${week.activity_rating_avg}/5` : ''}
+            </AppText>
+            <View style={styles.bars}>
+              <BarRow label="Regulacion" value={week.block_regulacion_days} max={7} />
+              <BarRow label="Conciencia" value={week.block_conciencia_days} max={7} />
+              <BarRow label="Afrontam." value={week.block_afrontamiento_days} max={7} />
+              <BarRow label="Reflexion" value={week.block_reflexion_days} max={7} />
+              <BarRow label="Organizac." value={week.block_organizacion_days} max={7} />
+            </View>
+            {week.activity_completion_pct != null && week.activity_completion_pct < 60 && (
+              <AppText variant="caption" color={color.textFaint}>
+                Completa el {Math.round(week.activity_completion_pct)}% de las que empieza. Si es
+                bajo, quiza las actividades le resultan largas.
+              </AppText>
+            )}
+          </Card>
+        </>
+      )}
+
       <AppText variant="caption" color={color.textFaint} align="center">
         Ves indicadores agregados y la evidencia de cada senal. No tienes acceso a las respuestas
         ni al texto que el estudiante escribe.

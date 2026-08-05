@@ -4,13 +4,14 @@ import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { saveGratitude } from '@/lib/activities';
 import { logActivityEvent } from '@/lib/activity-log';
-import { AppText, Button, Callout, Field, Screen } from '@/components/ui';
+import { AppText, Button, Callout, Field, RatingStars, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
 export default function Gratitud() {
   const { session } = useSession();
   const userId = session!.user.id;
   const [items, setItems] = useState(['', '', '']);
+  const [rating, setRating] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +26,7 @@ export default function Gratitud() {
     setError(null);
     setSaving(true);
     const filled = items.filter((x) => x.trim().length > 0).length;
-    const { id } = await logActivityEvent(userId, 'tres_cosas_buenas', { stepReached: filled });
+    const { id } = await logActivityEvent(userId, 'tres_cosas_buenas', { stepReached: filled, rating });
     const res = await saveGratitude(userId, items, id);
     setSaving(false);
     if (res.error) setError(res.error);
@@ -56,6 +57,11 @@ export default function Gratitud() {
         Lo que escribas aqui es privado. Tu tutor no lo ve, igual que tu diario.
       </Callout>
 
+      <AppText variant="small" color={color.textMuted} align="center" style={styles.ratingLabel}>
+        Te resulto util? (opcional)
+      </AppText>
+      <RatingStars value={rating} onChange={setRating} size={32} />
+
       {error && (
         <AppText variant="body" color={color.danger}>
           {error}
@@ -71,4 +77,5 @@ export default function Gratitud() {
 const styles = StyleSheet.create({
   content: { gap: space.md },
   save: { marginTop: space.sm },
+  ratingLabel: { marginTop: space.sm },
 });

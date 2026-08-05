@@ -5,6 +5,7 @@ import { useSession } from '@/lib/session';
 import { getLatestCheckin, todayStr } from '@/lib/checkins';
 import { getGamification, type Gamification } from '@/lib/wellness';
 import { getOpenAlerts, mensajeApoyo, nivelMasAlto, type AlertLevel } from '@/lib/alerts';
+import { getSharedFollowups, type SharedFollowup } from '@/lib/tutor';
 import { AppText, Button, Card, Screen, SupportLink } from '@/components/ui';
 import { color, radius, space } from '@/theme';
 
@@ -14,6 +15,7 @@ export default function Home() {
   const [checkedToday, setCheckedToday] = useState<boolean | null>(null);
   const [gam, setGam] = useState<Gamification | null>(null);
   const [apoyo, setApoyo] = useState<AlertLevel | null>(null);
+  const [followups, setFollowups] = useState<SharedFollowup[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -26,6 +28,9 @@ export default function Home() {
       });
       getOpenAlerts(userId).then((a) => {
         if (active) setApoyo(nivelMasAlto(a));
+      });
+      getSharedFollowups(userId).then((f) => {
+        if (active) setFollowups(f);
       });
       return () => {
         active = false;
@@ -88,6 +93,21 @@ export default function Home() {
         <View style={styles.statDivider} />
         <Stat value={gam?.current_streak ?? 0} label="Racha (dias)" />
       </View>
+
+      {/* Mensajes que el tutor marco como visibles. Antes se escribian y el
+          estudiante no los veia jamas. */}
+      {followups.length > 0 && (
+        <Card style={styles.followups}>
+          <AppText variant="bodyStrong" color={color.textStrong}>
+            De tu tutor
+          </AppText>
+          {followups.map((f) => (
+            <AppText key={f.id} variant="body" color={color.textDefault}>
+              {f.notes ?? 'Registro de seguimiento.'}
+            </AppText>
+          ))}
+        </Card>
+      )}
 
       {apoyo && <TarjetaApoyo level={apoyo} />}
 
@@ -169,4 +189,5 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   spacer: { flex: 1, minHeight: space.lg },
   apoyo: { gap: space.sm },
+  followups: { gap: space.sm },
 });

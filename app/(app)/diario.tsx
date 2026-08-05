@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { saveJournal } from '@/lib/journal';
-import { AppText, Button, Callout, Field, Screen } from '@/components/ui';
+import { AppText, Button, Callout, Field, RatingStars, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
 export default function Diario() {
@@ -12,6 +12,7 @@ export default function Diario() {
   const [pleasant, setPleasant] = useState('');
   const [difficult, setDifficult] = useState('');
   const [helped, setHelped] = useState('');
+  const [rating, setRating] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +22,7 @@ export default function Diario() {
     if (!hayAlgo) return setError('Escribe al menos un momento de tu dia.');
     setError(null);
     setSaving(true);
-    const res = await saveJournal(userId, { pleasant, difficult, helped });
+    const res = await saveJournal(userId, { pleasant, difficult, helped }, rating);
     setSaving(false);
     if (res.error) setError(res.error);
     else router.back();
@@ -68,6 +69,11 @@ export default function Diario() {
         Tu diario es privado. Tu tutor no lo ve, solo tu.
       </Callout>
 
+      <AppText variant="small" color={color.textMuted} align="center" style={styles.ratingLabel}>
+        Te resulto util? (opcional)
+      </AppText>
+      <RatingStars value={rating} onChange={setRating} size={32} />
+
       {error && (
         <AppText variant="body" color={color.danger}>
           {error}
@@ -83,4 +89,5 @@ export default function Diario() {
 const styles = StyleSheet.create({
   content: { gap: space.md },
   save: { marginTop: space.sm },
+  ratingLabel: { marginTop: space.sm },
 });

@@ -13,6 +13,9 @@ export type DashboardRow = {
   last_checkin: string | null;
 };
 
+// Espeja EXACTAMENTE lo que devuelve el RPC tutor_student_summary (0033). Si
+// aqui aparece un campo que el RPC no devuelve, es que alguien amplio la
+// frontera de privacidad: revisar la migracion antes de anadirlo.
 export type TutorSummary = {
   period_kind: string;
   period_start: string;
@@ -25,6 +28,17 @@ export type TutorSummary = {
   social_perception_avg: number | null;
   checkin_count: number;
   adherence_pct: number | null;
+  activity_days: number;
+  activity_adherence_pct: number | null;
+  activity_completion_pct: number | null;
+  activity_rating_avg: number | null;
+  emo_entries_count: number;
+  emo_intensity_avg: number | null;
+  block_regulacion_days: number;
+  block_conciencia_days: number;
+  block_afrontamiento_days: number;
+  block_reflexion_days: number;
+  block_organizacion_days: number;
   calc_version: string;
 };
 
@@ -71,6 +85,28 @@ export async function updateAlertStatus(
   }
   const { error } = await supabase.from('alerts').update(patch).eq('id', alertId);
   return { error: error?.message ?? null };
+}
+
+export type SharedFollowup = {
+  id: string;
+  kind: string;
+  notes: string | null;
+  occurred_at: string;
+};
+
+// Lo lee el ESTUDIANTE (policy "estudiante ve seguimientos compartidos", 0011):
+// solo los que el tutor marco como visible_to_student. Hasta ahora nadie leia
+// esta tabla, asi que un tutor podia compartir una nota y el estudiante no la
+// veia jamas.
+export async function getSharedFollowups(userId: string): Promise<SharedFollowup[]> {
+  const { data } = await supabase
+    .from('followups')
+    .select('id, kind, notes, occurred_at')
+    .eq('student_id', userId)
+    .eq('visible_to_student', true)
+    .order('occurred_at', { ascending: false })
+    .limit(5);
+  return (data as SharedFollowup[]) ?? [];
 }
 
 // Registrar una accion de seguimiento sobre el estudiante.

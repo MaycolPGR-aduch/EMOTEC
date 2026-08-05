@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 // Edge Function: recompute
 // Recalcula indicadores semanales, puntos y racha de UN estudiante (el que llama).
 // Corre con service_role -> se salta RLS, por eso verifica a mano: (1) que el
@@ -6,8 +7,17 @@
 // la racha no son falsificables desde el cliente.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const CALC_VERSION = 'e4-1';
+const CALC_VERSION = 'e9-1';
 const POINTS_PER_CHECKIN = 10;
+// 5 puntos por DIA con al menos una actividad completada, no por actividad: la
+// octava del dia da 0, asi que no hay nada que farmear. La gamificacion premia
+// constancia, no cantidad.
+const POINTS_PER_ACTIVITY_DAY = 5;
+
+// REGLA DURA: esta funcion corre con service_role y se salta la RLS entera.
+// NUNCA debe seleccionar texto del estudiante: worry_entries.body,
+// academic_tasks.title, journal_entries.*, gratitude_entries.items,
+// event_notes.body ni checkin_notes.body. Solo columnas estructuradas.
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors() });
@@ -54,6 +64,94 @@ Deno.serve(async (req) => {
       .order('local_date', { ascending: true });
     const rows = checkins ?? [];
 
+    // 3b. Ventana de la semana (lunes a domingo) y fuentes de actividad.
+    //
+    // La fecha se calcula en la ZONA DEL PERFIL, no en UTC: local_date lo deriva
+    // el servidor con esa zona (0031), y con toISOString() entre las 19:00 y
+    // medianoche de Lima "hoy" ya seria el dia siguiente -- un domingo por la
+    // noche eso desplazaria la ventana a la semana siguiente y perderia el dia.
+    const { data: prof } = await admin
+      .from('profiles')
+      .select('timezone')
+      .eq('id', uid)
+      .maybeSingle();
+    const tz = (prof?.timezone as string) ?? 'America/Lima';
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: tz }); // YYYY-MM-DD
+    const wkStart = weekStart(today);
+    const wkEnd = addDays(wkStart, 6);
+    // Tambien se recalcula la semana ANTERIOR: recompute puede ejecutarse tarde
+    // (p.ej. el primer check-in del lunes siguiente), y sin esto los dias de
+    // actividad de la semana pasada no se pagarian nunca ni apareceria su
+    // indicador.
+    const prevStart = addDays(wkStart, -7);
+
+    // Catalogo a un Map: 15 filas, evita joins y sus sorpresas semanticas.
+    const { data: catalogRows } = await admin
+      .from('activity_catalog')
+      .select('code, block, session_mode');
+    const blockOf = new Map<string, string>(
+      (catalogRows ?? []).map((c) => [c.code as string, c.block as string]),
+    );
+
+    const { data: sessions } = await admin
+      .from('activity_sessions')
+      .select('local_date, activity_code, status, duration_sec, rating, pre_state, post_state')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    const { data: emos } = await admin
+      .from('emotional_entries')
+      .select('local_date, kind, intensity, primary_emotion, life_area')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    const { data: coping } = await admin
+      .from('scenario_responses')
+      .select('local_date, coping_style')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    const { data: scenes } = await admin
+      .from('emotion_scene_responses')
+      .select('local_date, chose_best, plausible_hits, plausible_total')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    const { data: events } = await admin
+      .from('event_entries')
+      .select('local_date, life_area, impact, intensity, perceived_control, support_received')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    const { data: tasks } = await admin
+      .from('academic_tasks')
+      .select('local_date, status')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    const { data: worries } = await admin
+      .from('worry_entries')
+      .select('local_date, actionable, status')
+      .eq('student_id', uid)
+      .gte('local_date', prevStart)
+      .lte('local_date', wkEnd);
+
+    // Valencia de las emociones (agradable/desagradable/neutra) desde el catalogo.
+    const { data: emoCat } = await admin.from('emotion_catalog').select('code, valence');
+    const valenceOf = new Map<string, string>(
+      (emoCat ?? []).map((e) => [e.code as string, e.valence as string]),
+    );
+
+    const doneSessions = (sessions ?? []).filter((s) => s.status === 'completada');
+    const abandoned = (sessions ?? []).filter((s) => s.status === 'abandonada');
+    const activityDays = [...new Set(doneSessions.map((s) => s.local_date as string))].sort();
+
     // 4. Puntos: 10 por check-in, idempotente (unique student,reason,source).
     //    Reejecutar no duplica: ON CONFLICT DO NOTHING.
     if (rows.length > 0) {
@@ -63,12 +161,33 @@ Deno.serve(async (req) => {
         reason: 'checkin_diario',
         source_table: 'checkins',
         source_id: c.id,
+        source_key: `checkins:${c.id}`,
         rule_version: CALC_VERSION,
       }));
       await admin
         .from('points_ledger')
         .upsert(ledger, {
           onConflict: 'student_id,reason,source_table,source_id',
+          ignoreDuplicates: true,
+        });
+    }
+
+    // 4b. Puntos por DIA con actividad completada. Para "el dia X" no hay uuid
+    //     natural, y source_id=null no deduplica (en SQL dos NULL nunca son
+    //     iguales), asi que la clave es source_key='dia:<fecha>'.
+    if (activityDays.length > 0) {
+      const actLedger = activityDays.map((d) => ({
+        student_id: uid,
+        amount: POINTS_PER_ACTIVITY_DAY,
+        reason: 'actividad_completada',
+        source_table: 'activity_sessions',
+        source_key: `dia:${d}`,
+        rule_version: CALC_VERSION,
+      }));
+      await admin
+        .from('points_ledger')
+        .upsert(actLedger, {
+          onConflict: 'student_id,reason,source_key',
           ignoreDuplicates: true,
         });
     }
@@ -83,15 +202,44 @@ Deno.serve(async (req) => {
     const { current, longest, last } = computeStreaks(rows.map((c) => c.local_date as string));
 
     // 6. Indicadores de la semana actual (lunes a domingo).
-    const today = new Date().toISOString().slice(0, 10);
-    const wkStart = weekStart(today);
-    const wkEnd = addDays(wkStart, 6);
-    const inWeek = rows.filter((c) => c.local_date >= wkStart && c.local_date <= wkEnd);
-    let ind: Record<string, number> | null = null;
-    if (inWeek.length > 0) {
+    //
+    //    Tres objetos con destinos distintos:
+    //      ind     -> columnas tipadas de wellness_indicators. VISIBLES al tutor.
+    //      details -> jsonb. INVISIBLE al tutor por construccion: no tiene policy
+    //                 sobre la tabla y el RPC devuelve una lista fija de columnas.
+    //      derived -> solo para el ambito de las plantillas de reporte, asi se
+    //                 pueden anadir indicadores a los reportes SIN migracion.
+    // Se recalculan DOS semanas: si recompute corre tarde (el primer check-in del
+    // lunes siguiente), la semana pasada tambien queda al dia.
+    let ind: Record<string, number> | null = null; // la de la semana en curso, para el reporte
+    let derived: Record<string, number> = {};
+
+    for (const start of [prevStart, wkStart]) {
+      const end = addDays(start, 6);
+      const enRango = <T extends { local_date: string }>(arr: T[]) =>
+        arr.filter((x) => x.local_date >= start && x.local_date <= end);
+
+      const inWeek = enRango(rows as { local_date: string }[]) as typeof rows;
+      const wkDone = enRango(doneSessions as { local_date: string }[]) as typeof doneSessions;
+      const wkAband = enRango(abandoned as { local_date: string }[]) as typeof abandoned;
+      const emoRows = enRango((emos ?? []) as { local_date: string }[]) as NonNullable<typeof emos>;
+
+      if (inWeek.length === 0 && wkDone.length === 0 && wkAband.length === 0 && emoRows.length === 0) {
+        continue;
+      }
+
       const avg = (k: string) =>
-        round2(inWeek.reduce((s, c) => s + (c[k] as number), 0) / inWeek.length);
-      ind = {
+        inWeek.length ? round2(inWeek.reduce((s, c) => s + (c[k] as number), 0) / inWeek.length) : null;
+
+      const wkDays = [...new Set(wkDone.map((s) => s.local_date as string))];
+      const rated = wkDone.filter((s) => s.rating != null);
+      const cerradas = wkDone.length + wkAband.length;
+      const daysByBlock = (b: string) =>
+        [...new Set(wkDone
+          .filter((s) => blockOf.get(s.activity_code as string) === b)
+          .map((s) => s.local_date as string))].length;
+
+      const wkInd = {
         mood_avg: avg('mood'),
         stress_avg: avg('stress'),
         sleep_avg: avg('sleep'),
@@ -100,18 +248,63 @@ Deno.serve(async (req) => {
         social_perception_avg: avg('social_perception'),
         checkin_count: inWeek.length,
         adherence_pct: round2((inWeek.length / 7) * 100),
+
+        activity_days: wkDays.length,
+        activity_adherence_pct: round2((wkDays.length / 7) * 100),
+        activity_completion_pct: cerradas ? round2((wkDone.length / cerradas) * 100) : null,
+        activity_rating_avg: rated.length
+          ? round2(rated.reduce((s, r) => s + (r.rating as number), 0) / rated.length)
+          : null,
+        emo_entries_count: emoRows.length,
+        emo_intensity_avg: emoRows.length
+          ? round2(emoRows.reduce((s, e) => s + (e.intensity as number), 0) / emoRows.length)
+          : null,
+
+        block_regulacion_days: daysByBlock('regulacion'),
+        block_conciencia_days: daysByBlock('conciencia'),
+        block_afrontamiento_days: daysByBlock('afrontamiento'),
+        block_reflexion_days: daysByBlock('reflexion'),
+        block_organizacion_days: daysByBlock('organizacion'),
+      } as Record<string, number>;
+
+      const details = buildDetails({
+        doneSessions: wkDone,
+        abandoned: wkAband,
+        blockOf,
+        emos: emoRows,
+        valenceOf,
+        coping: enRango((coping ?? []) as { local_date: string }[]),
+        scenes: enRango((scenes ?? []) as { local_date: string }[]),
+        events: enRango((events ?? []) as { local_date: string }[]),
+        tasks: enRango((tasks ?? []) as { local_date: string }[]),
+        worries: enRango((worries ?? []) as { local_date: string }[]),
+      });
+
+      // Valores planos para las plantillas (no son columnas).
+      const wkDerived = {
+        tareas_pct: (details.tareas as Record<string, number>)?.pct ?? 0,
+        pre_post_delta: (details.pre_post as Record<string, number>)?.delta_avg ?? 0,
+        abandono_pct: cerradas ? round2((wkAband.length / cerradas) * 100) : 0,
+        actividades_total: wkDone.length,
       };
+
       await admin.from('wellness_indicators').upsert(
         {
           student_id: uid,
           period_kind: 'semanal',
-          period_start: wkStart,
-          period_end: wkEnd,
-          ...ind,
+          period_start: start,
+          period_end: end,
+          ...wkInd,
+          details,
           calc_version: CALC_VERSION,
         },
         { onConflict: 'student_id,period_kind,period_start' },
       );
+
+      if (start === wkStart) {
+        ind = wkInd;
+        derived = wkDerived;
+      }
     }
 
     // 6b. Reporte semanal desde la plantilla activa. El texto NO se inventa aqui:
@@ -128,7 +321,9 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (tpl) {
-        const content = buildReport(tpl.segments as TemplateSegment[], ind);
+        // Las plantillas ven ind + derived: se pueden anadir indicadores a los
+        // reportes sin migracion, porque derived no necesita columna.
+        const content = buildReport(tpl.segments as TemplateSegment[], { ...ind, ...derived });
         await admin.from('reports').upsert(
           {
             student_id: uid,
@@ -145,13 +340,19 @@ Deno.serve(async (req) => {
     }
 
     // 7. Estado de gamificacion.
+    //    last_activity_date = lo mas reciente entre check-in y actividad: ahora
+    //    las actividades tambien dan puntos, asi que mirar solo el check-in
+    //    mostraria una fecha vieja a quien solo hace actividades.
+    const lastActivity = activityDays.length ? activityDays[activityDays.length - 1] : null;
+    const lastAny = [last, lastActivity].filter(Boolean).sort().pop() ?? null;
+
     await admin.from('gamification_state').upsert(
       {
         student_id: uid,
         points,
         current_streak: current,
         longest_streak: longest,
-        last_activity_date: last,
+        last_activity_date: lastAny,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'student_id' },
@@ -168,11 +369,131 @@ Deno.serve(async (req) => {
       current_streak: current,
       longest_streak: longest,
       alertas_nuevas: nuevasAlertas,
+      actividad_dias: activityDays.length,
+      calc_version: CALC_VERSION,
     });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
 });
+
+// --- details: agregados que el TUTOR NO VE ---
+//
+// Van al jsonb `details` de wellness_indicators. La frontera es estructural: el
+// tutor no tiene policy sobre esa tabla y el RPC tutor_student_summary devuelve
+// una lista fija de columnas, asi que nada de aqui puede llegarle salvo que
+// alguien lo anada a mano a esa lista.
+//
+// Por que cada uno queda fuera:
+//  - coping_dist:      es un perfil de afrontamiento (scenario_responses ya no
+//                      tiene policy de tutor; exponer su agregado lo contradiria)
+//  - emo_valence_dist: "6 de 10 registros desagradables" empieza a ser contenido
+//  - life_area_dist:   dice DONDE esta el problema (familiar, economico)
+//  - tareas/preocupaciones/pre_post/detective/evento: derivan de tablas privadas
+//
+function buildDetails(d: {
+  doneSessions: any[];
+  abandoned: any[];
+  blockOf: Map<string, string>;
+  emos: any[];
+  valenceOf: Map<string, string>;
+  coping: any[];
+  scenes: any[];
+  events: any[];
+  tasks: any[];
+  worries: any[];
+}): Record<string, unknown> {
+  const countBy = <T,>(arr: T[], key: (x: T) => string | null | undefined) => {
+    const out: Record<string, number> = {};
+    for (const x of arr) {
+      const k = key(x);
+      if (k) out[k] = (out[k] ?? 0) + 1;
+    }
+    return out;
+  };
+
+  // Uso por bloque: dias, sesiones, valoracion y abandonos.
+  const porBloque: Record<string, Record<string, number>> = {};
+  for (const b of ['regulacion', 'conciencia', 'afrontamiento', 'reflexion', 'organizacion']) {
+    const done = d.doneSessions.filter((s) => d.blockOf.get(s.activity_code) === b);
+    const aband = d.abandoned.filter((s) => d.blockOf.get(s.activity_code) === b);
+    if (done.length === 0 && aband.length === 0) continue;
+    const rated = done.filter((s) => s.rating != null);
+    porBloque[b] = {
+      dias: [...new Set(done.map((s) => s.local_date))].length,
+      sesiones: done.length,
+      abandonadas: aband.length,
+      ...(rated.length
+        ? { rating_avg: round2(rated.reduce((s, r) => s + r.rating, 0) / rated.length) }
+        : {}),
+    };
+  }
+
+  // pre/post: el indicador que convierte "uso la actividad" en "le funciono".
+  const conPrePost = d.doneSessions.filter((s) => s.pre_state != null && s.post_state != null);
+  const prePost = conPrePost.length
+    ? {
+        n: conPrePost.length,
+        delta_avg: round2(
+          conPrePost.reduce((s, x) => s + (x.post_state - x.pre_state), 0) / conPrePost.length,
+        ),
+      }
+    : { n: 0, delta_avg: 0 };
+
+  const tareasHechas = d.tasks.filter((t) => t.status === 'hecha').length;
+  const worriesResueltas = d.worries.filter((w) => w.status === 'resuelta').length;
+  const scenesConDatos = d.scenes.filter((s) => s.plausible_total > 0);
+
+  return {
+    por_bloque: porBloque,
+    coping_dist: countBy(d.coping, (c) => c.coping_style),
+    emo_valence_dist: countBy(d.emos, (e) =>
+      e.primary_emotion ? (d.valenceOf.get(e.primary_emotion) ?? null) : null,
+    ),
+    life_area_dist: {
+      ...countBy(d.emos, (e) => e.life_area),
+      ...countBy(d.events, (e) => e.life_area),
+    },
+    tareas: {
+      creadas: d.tasks.length,
+      hechas: tareasHechas,
+      pct: d.tasks.length ? round2((tareasHechas / d.tasks.length) * 100) : 0,
+    },
+    preocupaciones: {
+      creadas: d.worries.length,
+      resueltas: worriesResueltas,
+      accionables: d.worries.filter((w) => w.actionable).length,
+    },
+    pre_post: prePost,
+    // Nota: los denominadores difieren a proposito. aciertos_pct solo tiene
+    // sentido en escenas con emociones plausibles definidas; mejor_respuesta_pct
+    // aplica a toda escena respondida.
+    detective: scenesConDatos.length
+      ? {
+          n: scenesConDatos.length,
+          aciertos_pct: round2(
+            (scenesConDatos.reduce((s, x) => s + x.plausible_hits / x.plausible_total, 0) /
+              scenesConDatos.length) * 100,
+          ),
+          mejor_respuesta_pct: round2(
+            (d.scenes.filter((s) => s.chose_best).length / Math.max(d.scenes.length, 1)) * 100,
+          ),
+        }
+      : { n: 0 },
+    evento: d.events.length
+      ? {
+          n: d.events.length,
+          intensidad_avg: round2(d.events.reduce((s, e) => s + e.intensity, 0) / d.events.length),
+          control_avg: round2(
+            d.events.reduce((s, e) => s + e.perceived_control, 0) / d.events.length,
+          ),
+          apoyo_avg: round2(
+            d.events.reduce((s, e) => s + e.support_received, 0) / d.events.length,
+          ),
+        }
+      : { n: 0 },
+  };
+}
 
 // --- motor de alertas ---
 

@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { recompute } from './wellness';
 
 // Registro unificado de uso de actividades. Reemplaza a logActivitySession y
 // saveBreathingSession, que hacian el mismo INSERT (y relajacion, que no es
@@ -16,6 +17,14 @@ export type SessionStatus = 'completada' | 'abandonada';
 
 function dur(seconds: number | null | undefined): number | null {
   return seconds != null && seconds > 0 ? Math.min(seconds, 7200) : null;
+}
+
+// Recalcula indicadores/puntos tras completar una actividad. Best-effort: si
+// falla, el registro ya quedo guardado y el proximo recompute lo recoge.
+// Sin esto, los puntos de actividad solo se pagarian al hacer un check-in, y los
+// dias de una semana ya cerrada se perderian para siempre.
+function triggerRecompute(): void {
+  void recompute().catch(() => {});
 }
 
 // --- Modo guiada ---
@@ -64,6 +73,7 @@ export async function closeActivitySession(
       step_total: opts.stepTotal ?? null,
     })
     .eq('id', sessionId);
+  if (!error && status === 'completada') triggerRecompute();
   return { error: error?.message ?? null };
 }
 
@@ -89,6 +99,7 @@ export async function logActivityEvent(
     })
     .select('id')
     .single();
+  if (!error) triggerRecompute();
   return { id: (data?.id as string) ?? null, error: error?.message ?? null };
 }
 
@@ -113,5 +124,6 @@ export async function logDailyActivity(
   // 23505 = ya existe la sesion de hoy (indice unico parcial de 0028). No es un
   // error: es el comportamiento esperado del modo diaria.
   if (error && (error as { code?: string }).code === '23505') return { id: null, error: null };
+  if (!error) triggerRecompute();
   return { id: (data?.id as string) ?? null, error: error?.message ?? null };
 }
