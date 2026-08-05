@@ -253,8 +253,16 @@ indicador o ayudar al acompañamiento; si no, no entra.
 | **Diario breve** | §7 propuesta / doc §3.5, §5.5 | Temas declarados (privado) | ⬜ pendiente |
 | **Evento e impacto** | Catálogo doc §3.4 | Contexto (qué pasó, área, impacto, control, apoyo) | ⬜ pendiente — recomendada del catálogo |
 | **Detective de emociones** | Catálogo doc §5.1 | Psicoeducación; reutiliza patrón de Situaciones | ⬜ pendiente — recomendada del catálogo |
-| **Descarga mental académica** | Nueva / doc §5.9 | Conecta con el indicador de *carga académica* | ⬜ pendiente |
-| **Relajación muscular / escaneo corporal** | Doc §4.3 | Reutiliza el motor de fases | ⬜ pendiente |
+| **Diario breve** | §7 propuesta / doc §3.5 | Texto privado (3 momentos) | ✅ hecho (0024) |
+| **Relajación muscular** | Doc §4.3 | Reutiliza `GuidedSequence` | ✅ hecho (0024) |
+| **Detective de emociones** | Doc §5.1 | Psicoeducación (privado) | ✅ hecho (0025) |
+| **Evento e impacto** | Doc §3.4 | Contexto estructurado + nota privada | ✅ hecho (0026) |
+| **Descarga académica** | Doc §5.9 | Pendientes → 1-3 para hoy | ✅ hecho (0027) |
+
+> **Catálogo completo (jul 2026): 12 actividades.** Termómetro, Rueda, Respiración (4 técnicas),
+> Anclaje, Tres cosas buenas, Situaciones, Caja de preocupaciones, Diario breve, Relajación
+> muscular, Detective de emociones, Evento e impacto, Descarga académica. Cubre los 4 bloques
+> del documento de catálogo. Pendiente: la pasada de calidad (reforzar/ampliar contenido).
 
 > **Mejora futura (jul 2026, pedido del usuario):** revisar y reforzar las actividades ya
 > construidas — ampliar contenido (más escenarios, más técnicas), pulir textos y flujos, y
