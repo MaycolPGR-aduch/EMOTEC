@@ -2,19 +2,10 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
-import { saveEvent, type EventArea, type EventImpact } from '@/lib/events';
-import { AppText, Button, Callout, Chip, Field, IntensityScale, Screen } from '@/components/ui';
+import { saveEvent, type EventImpact } from '@/lib/events';
+import { logActivityEvent } from '@/lib/activity-log';
+import { AppText, Button, Callout, Chip, Field, IntensityScale, LifeAreaPicker, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
-
-const AREAS: { key: EventArea; label: string }[] = [
-  { key: 'academica', label: 'Academica' },
-  { key: 'social', label: 'Social' },
-  { key: 'familiar', label: 'Familiar' },
-  { key: 'personal', label: 'Personal' },
-  { key: 'salud', label: 'Salud' },
-  { key: 'economia', label: 'Economia' },
-  { key: 'otra', label: 'Otra' },
-];
 
 const IMPACTOS: { key: EventImpact; label: string }[] = [
   { key: 'positivo', label: 'Positivo' },
@@ -25,7 +16,7 @@ const IMPACTOS: { key: EventImpact; label: string }[] = [
 export default function Evento() {
   const { session } = useSession();
   const userId = session!.user.id;
-  const [area, setArea] = useState<EventArea | null>(null);
+  const [lifeArea, setLifeArea] = useState<string | null>(null);
   const [impact, setImpact] = useState<EventImpact | null>(null);
   const [intensity, setIntensity] = useState<number | null>(null);
   const [control, setControl] = useState<number | null>(null);
@@ -34,20 +25,21 @@ export default function Evento() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const complete = area && impact && intensity != null && control != null && support != null;
+  const complete = lifeArea && impact && intensity != null && control != null && support != null;
 
   async function onSave() {
     if (!complete) return setError('Completa el area, el impacto y las tres escalas.');
     setError(null);
     setSaving(true);
+    const { id } = await logActivityEvent(userId, 'evento_impacto');
     const res = await saveEvent(userId, {
-      area: area!,
+      lifeArea: lifeArea!,
       impact: impact!,
       intensity: intensity!,
       perceivedControl: control!,
       supportReceived: support!,
       note,
-    });
+    }, id);
     setSaving(false);
     if (res.error) setError(res.error);
     else router.back();
@@ -60,11 +52,7 @@ export default function Evento() {
       </AppText>
 
       <Label>De que area?</Label>
-      <View style={styles.chips}>
-        {AREAS.map((a) => (
-          <Chip key={a.key} label={a.label} selected={area === a.key} onPress={() => setArea(a.key)} />
-        ))}
-      </View>
+      <LifeAreaPicker value={lifeArea} onChange={setLifeArea} clearable={false} />
 
       <Label>Como te afecto?</Label>
       <View style={styles.chips}>

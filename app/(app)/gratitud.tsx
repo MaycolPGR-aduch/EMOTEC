@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
-import { logActivitySession, saveGratitude } from '@/lib/activities';
+import { saveGratitude } from '@/lib/activities';
+import { logActivityEvent } from '@/lib/activity-log';
 import { AppText, Button, Callout, Field, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
@@ -23,8 +24,8 @@ export default function Gratitud() {
     if (!hayAlgo) return setError('Escribe al menos una cosa buena.');
     setError(null);
     setSaving(true);
-    const started = new Date();
-    const { id } = await logActivitySession(userId, 'tres_cosas_buenas', started, 0, null);
+    const filled = items.filter((x) => x.trim().length > 0).length;
+    const { id } = await logActivityEvent(userId, 'tres_cosas_buenas', { stepReached: filled });
     const res = await saveGratitude(userId, items, id);
     setSaving(false);
     if (res.error) setError(res.error);

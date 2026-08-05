@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { todayStr } from './checkins';
 
 export type SceneEmotion = { id: string; label: string; plausible: boolean };
 export type SceneSignal = { id: string; text: string };
@@ -34,14 +33,17 @@ export async function saveSceneResponse(
   chosenEmotions: string[],
   chosenSignals: string[],
   chosenResponseId: string,
+  sessionId: string | null = null,
 ): Promise<{ error: string | null }> {
+  // chose_best / plausible_hits los calcula un TRIGGER desde el catalogo (0030):
+  // el cliente no debe poder decidir si acerto (seria falsificable).
   const { error } = await supabase.from('emotion_scene_responses').insert({
     student_id: userId,
     scene_code: sceneCode,
     chosen_emotions: chosenEmotions,
     chosen_signals: chosenSignals,
     chosen_response_id: chosenResponseId,
-    local_date: todayStr(),
+    session_id: sessionId,
   });
   return { error: error?.message ?? null };
 }

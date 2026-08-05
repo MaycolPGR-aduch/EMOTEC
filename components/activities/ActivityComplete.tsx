@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
-import { AppText, Button, Icon, RatingStars, Screen } from '@/components/ui';
+import { AppText, Button, Icon, IntensityScale, RatingStars, Screen } from '@/components/ui';
 import { color, radius, space } from '@/theme';
 import { haptics } from '@/lib/haptics';
 
@@ -9,13 +9,22 @@ type ActivityCompleteProps = {
   title?: string;
   message?: string;
   rating?: { value: number | null; onChange: (n: number) => void; prompt?: string };
+  /** Estado 0-10 DESPUES. Con el pre mide si la actividad ayudo. */
+  postState?: { value: number | null; onChange: (n: number) => void; prompt?: string };
   primary: { label: string; onPress: () => void; loading?: boolean };
   error?: string | null;
 };
 
 // Cierre satisfactorio de una actividad: check animado, mensaje, valoracion
 // opcional y boton de guardar. Unifica los "Bien hecho" dispersos.
-export function ActivityComplete({ title = 'Bien hecho', message, rating, primary, error }: ActivityCompleteProps) {
+export function ActivityComplete({
+  title = 'Bien hecho',
+  message,
+  rating,
+  postState,
+  primary,
+  error,
+}: ActivityCompleteProps) {
   const scale = useSharedValue(0);
 
   useEffect(() => {
@@ -38,6 +47,15 @@ export function ActivityComplete({ title = 'Bien hecho', message, rating, primar
         <AppText variant="body" color={color.textSecondary} align="center">
           {message}
         </AppText>
+      )}
+
+      {postState && (
+        <View style={styles.rating}>
+          <AppText variant="body" color={color.textSecondary} align="center">
+            {postState.prompt ?? 'Y ahora, que tan tenso te sientes?'}
+          </AppText>
+          <IntensityScale value={postState.value} onChange={postState.onChange} />
+        </View>
       )}
 
       {rating && (

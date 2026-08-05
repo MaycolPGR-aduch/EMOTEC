@@ -3,14 +3,15 @@ import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { saveTermometro } from '@/lib/activities';
-import { AppText, Button, ContextPicker, IntensityScale, Screen } from '@/components/ui';
+import { logActivityEvent } from '@/lib/activity-log';
+import { AppText, Button, IntensityScale, LifeAreaPicker, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
 export default function Termometro() {
   const { session } = useSession();
   const userId = session!.user.id;
   const [intensity, setIntensity] = useState<number | null>(null);
-  const [context, setContext] = useState<string | null>(null);
+  const [lifeArea, setLifeArea] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,7 +22,9 @@ export default function Termometro() {
     }
     setError(null);
     setSaving(true);
-    const res = await saveTermometro(userId, intensity, context);
+    // Modo evento: una sesion de un solo INSERT, enlazada al registro.
+    const { id } = await logActivityEvent(userId, 'termometro_emocional');
+    const res = await saveTermometro(userId, intensity, lifeArea, id);
     setSaving(false);
     if (res.error) setError(res.error);
     else router.back();
@@ -52,7 +55,7 @@ export default function Termometro() {
       <AppText variant="bodyStrong" color={color.textStrong} style={styles.label}>
         Con que se relaciona? (opcional)
       </AppText>
-      <ContextPicker value={context} onChange={setContext} />
+      <LifeAreaPicker value={lifeArea} onChange={setLifeArea} />
 
       {error && (
         <AppText variant="body" color={color.danger}>

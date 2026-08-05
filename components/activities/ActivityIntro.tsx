@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { AppText, Button, Icon, Screen, type IconName } from '@/components/ui';
+import { AppText, Button, Icon, IntensityScale, Screen, type IconName } from '@/components/ui';
 import { color, radius, space } from '@/theme';
 import { motion } from '@/lib/motion';
 
@@ -13,6 +13,11 @@ type ActivityIntroProps = {
   onCancel?: () => void;
   startLabel?: string;
   disabled?: boolean;
+  /**
+   * Estado 0-10 ANTES de la actividad. Con el post permite medir si la
+   * actividad ayudo, no solo si se uso. Solo en las de regulacion.
+   */
+  preState?: { value: number | null; onChange: (n: number) => void; prompt?: string };
   children?: React.ReactNode;
 };
 
@@ -27,6 +32,7 @@ export function ActivityIntro({
   onCancel,
   startLabel = 'Empezar',
   disabled = false,
+  preState,
   children,
 }: ActivityIntroProps) {
   return (
@@ -50,6 +56,15 @@ export function ActivityIntro({
 
       {children}
 
+      {preState && (
+        <View style={styles.preState}>
+          <AppText variant="body" color={color.textSecondary} align="center">
+            {preState.prompt ?? 'Antes de empezar: que tan tenso te sientes ahora?'}
+          </AppText>
+          <IntensityScale value={preState.value} onChange={preState.onChange} />
+        </View>
+      )}
+
       <View style={styles.actions}>
         <Button title={startLabel} onPress={onStart} disabled={disabled} haptic="selection" />
         {onCancel && <Button title="Ahora no" variant="ghost" onPress={onCancel} />}
@@ -70,5 +85,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: space.xs,
   },
+  preState: { gap: space.md, alignItems: 'center' },
   actions: { gap: space.sm },
 });

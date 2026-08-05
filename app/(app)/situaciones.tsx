@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
 import { getScenarios, saveScenarioResponse, type Scenario, type ScenarioOption } from '@/lib/scenarios';
-import { AppText, Button, Callout, Card, ProgressDots, Screen } from '@/components/ui';
+import { closeActivitySession, openActivitySession } from '@/lib/activity-log';
+import { AppText, Button, Callout, Card, ProgressDots, RatingStars, Screen } from '@/components/ui';
 import { ActivityIntro, StepTransition } from '@/components/activities';
 import { color, space } from '@/theme';
 
@@ -25,6 +26,14 @@ export default function Situaciones() {
   const [tanda, setTanda] = useState<Scenario[]>([]);
   const [idx, setIdx] = useState(-1); // -1 = intro
   const [elegida, setElegida] = useState<ScenarioOption | null>(null);
+  const [rating, setRating] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const sessionId = useRef<string | null>(null);
+  const idxRef = useRef(0);
+  const closed = useRef(false);
+  idxRef.current = Math.max(idx, 0);
 
   useEffect(() => {
     getScenarios().then((all) => {
@@ -33,9 +42,31 @@ export default function Situaciones() {
     });
   }, []);
 
+  // Abandono a mitad de la tanda.
+  useEffect(() => {
+    return () => {
+      if (sessionId.current && !closed.current) {
+        closed.current = true;
+        void closeActivitySession(sessionId.current, {
+          status: 'abandonada',
+          stepReached: idxRef.current,
+          stepTotal: POR_SESION,
+        });
+      }
+    };
+  }, []);
+
+  async function start() {
+    const { id } = await openActivitySession(userId, 'situaciones_interactivas');
+    sessionId.current = id;
+    setIdx(0);
+  }
+
   async function elegir(opt: ScenarioOption) {
     setElegida(opt);
-    await saveScenarioResponse(userId, tanda[idx].code, opt);
+    // El error ya no se descarta: si falla, se avisa sin cortar la reflexion.
+    const res = await saveScenarioResponse(userId, tanda[idx].code, opt, sessionId.current);
+    if (res.error) setSaveError('No pudimos guardar tu respuesta. Tu conexion pudo fallar.');
   }
 
   function siguiente() {
@@ -43,23 +74,38 @@ export default function Situaciones() {
     setIdx((i) => i + 1);
   }
 
+  async function terminar() {
+    setSaving(true);
+    if (sessionId.current) {
+      closed.current = true;
+      await closeActivitySession(sessionId.current, {
+        status: 'completada',
+        rating,
+        stepReached: tanda.length,
+        stepTotal: POR_SESION,
+      });
+    }
+    setSaving(false);
+    router.back();
+  }
+
   if (loading) return <Screen loading background="surface" />;
 
-  // Intro
   if (idx === -1) {
     return (
       <ActivityIntro
         icon="situaciones"
         title="Situaciones"
+        durationLabel="≈ 4 min"
         description="Te mostraremos algunas situaciones cotidianas. No hay respuestas correctas ni incorrectas: elige lo que harias tu. Despues veras una idea que puede ayudarte."
-        onStart={() => setIdx(0)}
+        onStart={start}
         onCancel={() => router.back()}
         disabled={tanda.length === 0}
       />
     );
   }
 
-  // Fin
+  // Fin: cierre + valoracion de la tanda completa (no por escenario).
   if (idx >= tanda.length) {
     return (
       <Screen background="surface" center contentContainerStyle={styles.center}>
@@ -69,7 +115,12 @@ export default function Situaciones() {
         <AppText variant="body" color={color.textSecondary} align="center">
           No hay una unica forma de afrontar las cosas. Reconocer lo que sueles hacer ya es un paso.
         </AppText>
-        <Button title="Terminar" onPress={() => router.back()} style={styles.btn} />
+        <AppText variant="body" color={color.textSecondary} align="center">
+          Te resulto util?
+        </AppText>
+        <RatingStars value={rating} onChange={setRating} />
+        {saveError && <Callout tone="warning">{saveError}</Callout>}
+        <Button title="Terminar" onPress={terminar} loading={saving} style={styles.btn} />
       </Screen>
     );
   }
@@ -94,7 +145,7 @@ export default function Situaciones() {
                 Que harias tu?
               </AppText>
               {s.options.map((o) => (
-                <Card key={o.id} variant="outlined" onPress={() => elegir(o)} style={styles.option}>
+                <Card key={o.id} variant="outlined" onPress={() => elegir(o)}>
                   <AppText variant="bodyStrong" weight="regular" color={color.textDefault}>
                     {o.text}
                   </AppText>
@@ -109,6 +160,7 @@ export default function Situaciones() {
                 </AppText>
               </Card>
               <Callout tone="info">{elegida.reflexion}</Callout>
+              {saveError && <Callout tone="warning">{saveError}</Callout>}
               <Button
                 title={idx + 1 < tanda.length ? 'Siguiente situacion' : 'Terminar'}
                 onPress={siguiente}
@@ -125,7 +177,6 @@ const styles = StyleSheet.create({
   center: { justifyContent: 'center', gap: space.lg },
   content: { gap: space.md },
   options: { gap: space.sm, marginTop: space.sm },
-  option: {},
   reflexion: { gap: space.md, marginTop: space.sm },
   btn: { marginTop: space.md },
 });

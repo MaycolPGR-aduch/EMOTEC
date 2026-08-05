@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { todayStr } from './checkins';
 
 export type TaskStatus = 'pendiente' | 'hoy' | 'hecha' | 'archivada';
 export type AcademicTask = {
@@ -20,13 +19,34 @@ export async function getActiveTasks(userId: string): Promise<AcademicTask[]> {
   return (data as AcademicTask[]) ?? [];
 }
 
-export async function createTask(userId: string, title: string): Promise<{ error: string | null }> {
+// done_at se escribia y no lo leia nadie, asi que no habia tasa de cumplimiento.
+// Esto la hace visible al estudiante (y es el mismo dato que recompute agrega).
+export async function getTaskStats(
+  userId: string,
+  sinceLocalDate: string,
+): Promise<{ creadas: number; hechas: number; pct: number }> {
+  const { data } = await supabase
+    .from('academic_tasks')
+    .select('status')
+    .eq('student_id', userId)
+    .gte('local_date', sinceLocalDate);
+  const rows = (data as { status: TaskStatus }[]) ?? [];
+  const creadas = rows.length;
+  const hechas = rows.filter((r) => r.status === 'hecha').length;
+  return { creadas, hechas, pct: creadas ? Math.round((hechas / creadas) * 100) : 0 };
+}
+
+export async function createTask(
+  userId: string,
+  title: string,
+  sessionId: string | null = null,
+): Promise<{ error: string | null }> {
   const clean = title.trim();
   if (!clean) return { error: 'Escribe una tarea.' };
   const { error } = await supabase.from('academic_tasks').insert({
     student_id: userId,
     title: clean,
-    local_date: todayStr(),
+    session_id: sessionId,
   });
   return { error: error?.message ?? null };
 }

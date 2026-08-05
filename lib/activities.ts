@@ -1,28 +1,11 @@
 import { supabase } from './supabase';
-import { todayStr } from './checkins';
 
-// Rueda de emociones: emociones primarias y sus secundarias. primary_emotion se
-// guarda como texto de esta lista cerrada (no texto libre), asi no hay que
-// filtrar texto crudo hacia indicadores.
-export const PRIMARY_EMOTIONS: { key: string; label: string; secondary: string[] }[] = [
-  { key: 'alegria', label: 'Alegria', secondary: ['Entusiasmo', 'Gratitud', 'Orgullo', 'Esperanza'] },
-  { key: 'tristeza', label: 'Tristeza', secondary: ['Desanimo', 'Soledad', 'Decepcion', 'Nostalgia'] },
-  { key: 'miedo', label: 'Miedo', secondary: ['Ansiedad', 'Inseguridad', 'Preocupacion', 'Nerviosismo'] },
-  { key: 'enojo', label: 'Enojo', secondary: ['Frustracion', 'Irritacion', 'Impotencia', 'Fastidio'] },
-  { key: 'calma', label: 'Calma', secondary: ['Tranquilidad', 'Alivio', 'Serenidad'] },
-  { key: 'sorpresa', label: 'Sorpresa', secondary: ['Asombro', 'Confusion', 'Desconcierto'] },
-  { key: 'afecto', label: 'Afecto', secondary: ['Carino', 'Conexion', 'Agradecimiento'] },
-  { key: 'verguenza', label: 'Verguenza', secondary: ['Culpa', 'Timidez', 'Retraimiento'] },
-];
-
-// Contexto: catalogo cerrado (alimenta indicadores que el tutor SI ve).
-export const CONTEXTS: { key: string; label: string }[] = [
-  { key: 'academico', label: 'Academico' },
-  { key: 'social', label: 'Social' },
-  { key: 'familiar', label: 'Familiar' },
-  { key: 'salud', label: 'Salud' },
-  { key: 'otro', label: 'Otro' },
-];
+// Solo lo especifico del dominio. El registro de sesiones vive en
+// lib/activity-log.ts y los catalogos (areas, emociones) en lib/catalogs.ts,
+// leidos de la base -- antes estaban hardcodeados y DUPLICADOS.
+//
+// local_date ya no se envia en ningun insert: lo deriva el servidor con la zona
+// horaria del perfil (migracion 0031), lo que ademas impide falsificarlo.
 
 export type BreathingActivity = {
   code: string;
@@ -37,48 +20,51 @@ export type BreathingActivity = {
   };
 };
 
-// Termometro emocional: intensidad puntual 0-10 (sin etiqueta de emocion).
-export async function saveTermometro(
-  userId: string,
-  intensity: number,
-  context: string | null,
-): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('emotional_entries').insert({
-    student_id: userId,
-    kind: 'termometro',
-    intensity,
-    context_tag: context,
-    local_date: todayStr(),
-  });
-  return { error: error?.message ?? null };
-}
-
-// Rueda de emociones: emocion primaria (obligatoria), secundaria (opcional),
-// intensidad y contexto.
-export async function saveRueda(
-  userId: string,
-  primary: string,
-  secondary: string | null,
-  intensity: number,
-  context: string | null,
-): Promise<{ error: string | null }> {
-  const { error } = await supabase.from('emotional_entries').insert({
-    student_id: userId,
-    kind: 'rueda',
-    intensity,
-    primary_emotion: primary,
-    secondary_emotion: secondary,
-    context_tag: context,
-    local_date: todayStr(),
-  });
-  return { error: error?.message ?? null };
-}
-
 export type RelaxationConfig = {
   tensa_seg: number;
   suelta_seg: number;
   groups: { label: string }[];
 };
+
+// Termometro emocional: intensidad puntual 0-10 (sin etiqueta de emocion).
+export async function saveTermometro(
+  userId: string,
+  intensity: number,
+  lifeArea: string | null,
+  sessionId: string | null = null,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('emotional_entries').insert({
+    student_id: userId,
+    kind: 'termometro',
+    intensity,
+    life_area: lifeArea,
+    session_id: sessionId,
+  });
+  return { error: error?.message ?? null };
+}
+
+// Rueda de emociones: emocion primaria (obligatoria), secundaria (opcional),
+// intensidad y area de vida. Las emociones se guardan por CODE (con FK al
+// catalogo), no por etiqueta.
+export async function saveRueda(
+  userId: string,
+  primaryCode: string,
+  secondaryCode: string | null,
+  intensity: number,
+  lifeArea: string | null,
+  sessionId: string | null = null,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('emotional_entries').insert({
+    student_id: userId,
+    kind: 'rueda',
+    intensity,
+    primary_emotion: primaryCode,
+    secondary_emotion: secondaryCode,
+    life_area: lifeArea,
+    session_id: sessionId,
+  });
+  return { error: error?.message ?? null };
+}
 
 // Lee la config de una actividad del catalogo (p.ej. relajacion muscular: los
 // grupos y tiempos viven en la base, no en el cliente).
@@ -101,33 +87,7 @@ export async function getBreathingActivities(): Promise<BreathingActivity[]> {
   return (data as BreathingActivity[]) ?? [];
 }
 
-// Registra una sesion de actividad generica (anclaje, gratitud, etc.) y
-// devuelve su id, para poder enlazar datos asociados (p.ej. la gratitud).
-export async function logActivitySession(
-  userId: string,
-  activityCode: string,
-  startedAt: Date,
-  durationSec: number,
-  rating: number | null,
-): Promise<{ id: string | null; error: string | null }> {
-  const { data, error } = await supabase
-    .from('activity_sessions')
-    .insert({
-      student_id: userId,
-      activity_code: activityCode,
-      started_at: startedAt.toISOString(),
-      completed_at: new Date().toISOString(),
-      local_date: todayStr(),
-      duration_sec: durationSec,
-      rating,
-    })
-    .select('id')
-    .single();
-  return { id: (data?.id as string) ?? null, error: error?.message ?? null };
-}
-
-// Tres cosas buenas: texto PRIVADO del estudiante (tabla aparte, el tutor no la
-// ve). items: hasta 3 frases breves.
+// Tres cosas buenas: texto PRIVADO del estudiante (tabla aparte, el tutor no la ve).
 export async function saveGratitude(
   userId: string,
   items: string[],
@@ -139,28 +99,6 @@ export async function saveGratitude(
     student_id: userId,
     session_id: sessionId,
     items: clean,
-    local_date: todayStr(),
-  });
-  return { error: error?.message ?? null };
-}
-
-// Respiracion: registra la sesion (para historial y adherencia) con su valoracion.
-export async function saveBreathingSession(
-  userId: string,
-  activityCode: string,
-  startedAt: Date,
-  durationSec: number,
-  rating: number | null,
-): Promise<{ error: string | null }> {
-  const now = new Date();
-  const { error } = await supabase.from('activity_sessions').insert({
-    student_id: userId,
-    activity_code: activityCode,
-    started_at: startedAt.toISOString(),
-    completed_at: now.toISOString(),
-    local_date: todayStr(),
-    duration_sec: durationSec,
-    rating,
   });
   return { error: error?.message ?? null };
 }

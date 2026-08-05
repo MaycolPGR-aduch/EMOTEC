@@ -3,13 +3,14 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
-import { getActivityConfig, saveBreathingSession, type RelaxationConfig } from '@/lib/activities';
+import { getActivityConfig, type RelaxationConfig } from '@/lib/activities';
+import { closeActivitySession, openActivitySession } from '@/lib/activity-log';
 import { Screen } from '@/components/ui';
 import { ActivityComplete, ActivityIntro, GuidedSequence, type Phase } from '@/components/activities';
 import { color } from '@/theme';
 
-// Fases: por cada grupo muscular, una fase "Tensa" (crece el circulo) y una
-// "Suelta" (se relaja). Reutiliza el motor de la respiracion.
+// Por cada grupo muscular: una fase "Tensa" (crece el circulo) y una "Suelta".
+// Reutiliza el motor de la respiracion.
 function phasesFor(cfg: RelaxationConfig): Phase[] {
   const phases: Phase[] = [];
   for (const g of cfg.groups) {
@@ -24,23 +25,68 @@ export default function Relajacion() {
   const userId = session!.user.id;
   const [cfg, setCfg] = useState<RelaxationConfig | null>(null);
   const [phase, setPhase] = useState<'intro' | 'running' | 'done'>('intro');
+  const [preState, setPreState] = useState<number | null>(null);
+  const [postState, setPostState] = useState<number | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const startedAt = useRef<Date | null>(null);
+  const sessionId = useRef<string | null>(null);
+  const closed = useRef(false);
 
   useEffect(() => {
     getActivityConfig<RelaxationConfig>('relajacion_muscular').then(setCfg);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (sessionId.current && !closed.current) {
+        closed.current = true;
+        void closeActivitySession(sessionId.current, { status: 'abandonada' });
+      }
+    };
+  }, []);
+
+  async function start() {
+    startedAt.current = new Date();
+    const { id } = await openActivitySession(userId, 'relajacion_muscular', { preState });
+    sessionId.current = id;
+    setPhase('running');
+  }
+
+  async function cancel() {
+    if (sessionId.current && !closed.current) {
+      closed.current = true;
+      await closeActivitySession(sessionId.current, { status: 'abandonada' });
+      sessionId.current = null;
+    }
+    setPhase('intro');
+  }
+
   async function save() {
-    if (!startedAt.current) return;
     setSaving(true);
-    const dur = Math.round((Date.now() - startedAt.current.getTime()) / 1000);
-    const res = await saveBreathingSession(userId, 'relajacion_muscular', startedAt.current, dur, rating);
+    if (sessionId.current) {
+      closed.current = true;
+      const dur = startedAt.current
+        ? Math.round((Date.now() - startedAt.current.getTime()) / 1000)
+        : null;
+      const res = await closeActivitySession(sessionId.current, {
+        status: 'completada',
+        durationSec: dur,
+        rating,
+        postState,
+        stepTotal: cfg?.groups.length ?? null,
+        stepReached: cfg?.groups.length ?? null,
+      });
+      if (res.error) {
+        setSaving(false);
+        setError('No pudimos guardar tu sesion. Tu conexion pudo fallar.');
+        return;
+      }
+    }
     setSaving(false);
-    if (res.error) setError(res.error);
-    else router.back();
+    router.back();
   }
 
   if (cfg === null) return <Screen loading background="surface" />;
@@ -52,7 +98,7 @@ export default function Relajacion() {
           phases={phasesFor(cfg)}
           cycles={1}
           onComplete={() => setPhase('done')}
-          onCancel={() => setPhase('intro')}
+          onCancel={cancel}
         />
       </SafeAreaView>
     );
@@ -61,8 +107,8 @@ export default function Relajacion() {
   if (phase === 'done') {
     return (
       <ActivityComplete
-        message="Como te sientes despues de soltar la tension? (opcional)"
-        rating={{ value: rating, onChange: setRating }}
+        postState={{ value: postState, onChange: setPostState }}
+        rating={{ value: rating, onChange: setRating, prompt: 'Te resulto util?' }}
         primary={{ label: 'Guardar', onPress: save, loading: saving }}
         error={error}
       />
@@ -74,12 +120,10 @@ export default function Relajacion() {
     <ActivityIntro
       icon="relajacion"
       title="Relajacion muscular"
-      durationLabel={`≈ ${Math.round(totalSeg / 60)} min`}
+      durationLabel={`≈ ${Math.max(1, Math.round(totalSeg / 60))} min`}
       description="Vamos a tensar y soltar cada grupo muscular, de los pies a la cabeza. Al soltar, nota la diferencia entre la tension y la calma."
-      onStart={() => {
-        startedAt.current = new Date();
-        setPhase('running');
-      }}
+      preState={{ value: preState, onChange: setPreState }}
+      onStart={start}
       onCancel={() => router.back()}
     />
   );

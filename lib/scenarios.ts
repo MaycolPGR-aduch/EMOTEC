@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import { todayStr } from './checkins';
 
 export type ScenarioOption = {
   id: string;
@@ -31,13 +30,14 @@ export async function saveScenarioResponse(
   userId: string,
   scenarioCode: string,
   option: ScenarioOption,
+  sessionId: string | null = null,
 ): Promise<{ error: string | null }> {
   const { error } = await supabase.from('scenario_responses').insert({
     student_id: userId,
     scenario_code: scenarioCode,
     option_id: option.id,
     coping_style: option.coping_style,
-    local_date: todayStr(),
+    session_id: sessionId,
   });
   return { error: error?.message ?? null };
 }

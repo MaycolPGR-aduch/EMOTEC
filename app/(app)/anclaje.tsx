@@ -1,8 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
-import { logActivitySession } from '@/lib/activities';
+import { closeActivitySession, openActivitySession } from '@/lib/activity-log';
 import { AppText, Button, ProgressDots, Screen } from '@/components/ui';
 import { ActivityComplete, ActivityIntro, StepTransition } from '@/components/activities';
 import { color, space } from '@/theme';
@@ -19,18 +19,64 @@ export default function Anclaje() {
   const { session } = useSession();
   const userId = session!.user.id;
   const [step, setStep] = useState(-1); // -1 intro, 0..4 pasos, 5 fin
-  const startedAt = useRef<Date | null>(null);
+  const [preState, setPreState] = useState<number | null>(null);
+  const [postState, setPostState] = useState<number | null>(null);
+  const [rating, setRating] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function start() {
+  const startedAt = useRef<Date | null>(null);
+  const sessionId = useRef<string | null>(null);
+  const stepRef = useRef(0);
+  const closed = useRef(false);
+
+  stepRef.current = Math.max(step, 0);
+
+  // Si la pantalla se desmonta con la sesion abierta (router.back, boton fisico
+  // de Android), fue un abandono. Una sola escritura de cierre, sin instrumentar
+  // cada paso. Si la app muere de golpe, el barrendero horario la marca sola.
+  useEffect(() => {
+    return () => {
+      if (sessionId.current && !closed.current) {
+        closed.current = true;
+        void closeActivitySession(sessionId.current, {
+          status: 'abandonada',
+          stepReached: stepRef.current,
+          stepTotal: PASOS.length,
+        });
+      }
+    };
+  }, []);
+
+  async function start() {
     startedAt.current = new Date();
+    const { id } = await openActivitySession(userId, 'anclaje_54321', { preState });
+    sessionId.current = id;
     setStep(0);
   }
 
   async function finish() {
-    if (startedAt.current) {
-      const dur = Math.round((Date.now() - startedAt.current.getTime()) / 1000);
-      await logActivitySession(userId, 'anclaje_54321', startedAt.current, dur, null);
+    setSaving(true);
+    if (sessionId.current) {
+      closed.current = true;
+      const dur = startedAt.current
+        ? Math.round((Date.now() - startedAt.current.getTime()) / 1000)
+        : null;
+      const res = await closeActivitySession(sessionId.current, {
+        status: 'completada',
+        durationSec: dur,
+        rating,
+        postState,
+        stepReached: PASOS.length,
+        stepTotal: PASOS.length,
+      });
+      if (res.error) {
+        setSaving(false);
+        setError('No pudimos guardar tu sesion. Tu conexion pudo fallar.');
+        return;
+      }
     }
+    setSaving(false);
     router.back();
   }
 
@@ -41,6 +87,7 @@ export default function Anclaje() {
         title="Anclaje 5-4-3-2-1"
         durationLabel="≈ 2 min"
         description="Cuando la mente se acelera, volver a los sentidos ayuda a regresar al presente. Iremos paso a paso, sin prisa."
+        preState={{ value: preState, onChange: setPreState }}
         onStart={start}
         onCancel={() => router.back()}
       />
@@ -51,7 +98,10 @@ export default function Anclaje() {
     return (
       <ActivityComplete
         message="Tomate un momento antes de seguir con tu dia."
-        primary={{ label: 'Terminar', onPress: finish }}
+        postState={{ value: postState, onChange: setPostState }}
+        rating={{ value: rating, onChange: setRating, prompt: 'Te resulto util?' }}
+        primary={{ label: 'Terminar', onPress: finish, loading: saving }}
+        error={error}
       />
     );
   }

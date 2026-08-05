@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSession } from '@/lib/session';
@@ -8,6 +8,7 @@ import {
   type EmotionScene,
   type SceneResponse,
 } from '@/lib/emotion-scenes';
+import { closeActivitySession, openActivitySession } from '@/lib/activity-log';
 import { AppText, Button, Callout, Card, Chip, ProgressDots, Screen } from '@/components/ui';
 import { ActivityIntro, StepTransition } from '@/components/activities';
 import { color, space } from '@/theme';
@@ -28,6 +29,11 @@ export default function Detective() {
   const [emotions, setEmotions] = useState<string[]>([]);
   const [signals, setSignals] = useState<string[]>([]);
   const [chosen, setChosen] = useState<SceneResponse | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const sessionId = useRef<string | null>(null);
+  const stepRef = useRef(0);
+  const closed = useRef(false);
 
   useEffect(() => {
     getEmotionScenes().then((all) => {
@@ -36,6 +42,26 @@ export default function Detective() {
     });
   }, []);
 
+  // Abandono a mitad del wizard.
+  useEffect(() => {
+    return () => {
+      if (sessionId.current && !closed.current) {
+        closed.current = true;
+        void closeActivitySession(sessionId.current, {
+          status: 'abandonada',
+          stepReached: stepRef.current,
+          stepTotal: ORDER.length,
+        });
+      }
+    };
+  }, []);
+
+  async function start() {
+    const { id } = await openActivitySession(userId, 'detective_emociones');
+    sessionId.current = id;
+    setStep('emociones');
+  }
+
   function toggle(list: string[], set: (v: string[]) => void, id: string) {
     set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
@@ -43,7 +69,18 @@ export default function Detective() {
   async function elegirRespuesta(r: SceneResponse) {
     setChosen(r);
     setStep('explicacion');
-    if (scene) await saveSceneResponse(userId, scene.code, emotions, signals, r.id);
+    if (!scene) return;
+    // chose_best / plausible_hits los calcula un trigger en la base.
+    const res = await saveSceneResponse(userId, scene.code, emotions, signals, r.id, sessionId.current);
+    if (res.error) setSaveError('No pudimos guardar tu respuesta. Tu conexion pudo fallar.');
+    if (sessionId.current && !closed.current) {
+      closed.current = true;
+      await closeActivitySession(sessionId.current, {
+        status: 'completada',
+        stepReached: ORDER.length,
+        stepTotal: ORDER.length,
+      });
+    }
   }
 
   if (loading) return <Screen loading background="surface" />;
@@ -64,13 +101,14 @@ export default function Detective() {
         title="Detective de emociones"
         durationLabel="≈ 3 min"
         description="Leeras una escena cotidiana. No hay una unica respuesta correcta: se trata de practicar como reconocemos lo que le pasa a alguien."
-        onStart={() => setStep('emociones')}
+        onStart={start}
         onCancel={() => router.back()}
       />
     );
   }
 
   const stepIndex = ORDER.indexOf(step);
+  stepRef.current = Math.max(stepIndex, 0);
 
   return (
     <Screen scroll background="surface">
@@ -140,6 +178,7 @@ export default function Detective() {
             </Card>
             <Callout tone="info">{chosen.reflexion}</Callout>
             <Callout tone="privacy">{scene.content.explanation}</Callout>
+            {saveError && <Callout tone="warning">{saveError}</Callout>}
             <Button title="Terminar" onPress={() => router.back()} />
           </View>
         )}

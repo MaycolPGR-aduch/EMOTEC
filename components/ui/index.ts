@@ -9,7 +9,7 @@ export { Field } from './Field';
 export { Callout } from './Callout';
 export { RatingStars } from './RatingStars';
 export { IntensityScale } from './IntensityScale';
-export { ContextPicker } from './ContextPicker';
+export { LifeAreaPicker } from './LifeAreaPicker';
 export { ProgressDots } from './ProgressDots';
 export { SupportLink } from './SupportLink';
 export { ActivityCard } from './ActivityCard';

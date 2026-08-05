@@ -7,8 +7,10 @@ import {
   deleteTask,
   getActiveTasks,
   setStatus,
+  getTaskStats,
   type AcademicTask,
 } from '@/lib/academic-tasks';
+import { logDailyActivity } from '@/lib/activity-log';
 import { AppText, Button, Callout, Card, Field, Icon, Screen } from '@/components/ui';
 import { color, space } from '@/theme';
 
@@ -19,10 +21,15 @@ export default function Descarga() {
   const userId = session!.user.id;
   const [tasks, setTasks] = useState<AcademicTask[] | null>(null);
   const [nueva, setNueva] = useState('');
+  const [stats, setStats] = useState<{ creadas: number; hechas: number; pct: number } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     getActiveTasks(userId).then(setTasks);
+    // done_at se escribia y no lo leia nadie: ahora la tasa de cumplimiento es
+    // visible para el estudiante (mismo dato que agrega recompute).
+    const hace7 = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+    getTaskStats(userId, hace7).then(setStats);
   }, [userId]);
 
   useFocusEffect(useCallback(() => load(), [load]));
@@ -34,7 +41,8 @@ export default function Descarga() {
   async function agregar() {
     if (!nueva.trim()) return;
     setBusy(true);
-    const res = await createTask(userId, nueva);
+    const { id } = await logDailyActivity(userId, 'descarga_academica');
+    const res = await createTask(userId, nueva, id);
     setBusy(false);
     if (res.error) Alert.alert('Error', res.error);
     else {
@@ -61,6 +69,12 @@ export default function Descarga() {
         Sacar los pendientes de la cabeza y ponerlos aqui baja la carga mental. Luego elige 1 a 3
         para hoy: menos es mas realista.
       </Callout>
+
+      {stats && stats.creadas > 0 && (
+        <AppText variant="small" color={color.textMuted}>
+          Esta semana: {stats.hechas} de {stats.creadas} hechas ({stats.pct}%)
+        </AppText>
+      )}
 
       <View style={styles.addRow}>
         <View style={styles.flex1}>

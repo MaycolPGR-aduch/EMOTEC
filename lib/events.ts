@@ -1,11 +1,9 @@
 import { supabase } from './supabase';
-import { todayStr } from './checkins';
 
-export type EventArea = 'academica' | 'social' | 'familiar' | 'personal' | 'salud' | 'economia' | 'otra';
 export type EventImpact = 'positivo' | 'negativo' | 'mixto';
 
 export type EventDraft = {
-  area: EventArea;
+  lifeArea: string; // code de life_area_catalog
   impact: EventImpact;
   intensity: number;
   perceivedControl: number;
@@ -18,17 +16,18 @@ export type EventDraft = {
 export async function saveEvent(
   userId: string,
   draft: EventDraft,
+  sessionId: string | null = null,
 ): Promise<{ error: string | null }> {
   const { data, error } = await supabase
     .from('event_entries')
     .insert({
       student_id: userId,
-      area: draft.area,
+      life_area: draft.lifeArea,
       impact: draft.impact,
       intensity: draft.intensity,
       perceived_control: draft.perceivedControl,
       support_received: draft.supportReceived,
-      local_date: todayStr(),
+      session_id: sessionId,
     })
     .select('id')
     .single();

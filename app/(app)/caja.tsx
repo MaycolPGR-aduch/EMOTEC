@@ -2,7 +2,15 @@ import { useCallback, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useSession } from '@/lib/session';
-import { createWorry, deleteWorry, getOpenWorries, resolveWorry, type Worry } from '@/lib/worries';
+import {
+  createWorry,
+  deleteWorry,
+  getOpenWorries,
+  getResolvedWorries,
+  resolveWorry,
+  type Worry,
+} from '@/lib/worries';
+import { logDailyActivity } from '@/lib/activity-log';
 import { AppText, Button, Card, Chip, Field, Screen, SupportLink } from '@/components/ui';
 import { color, space } from '@/theme';
 
@@ -30,6 +38,7 @@ export default function Caja() {
   const { session } = useSession();
   const userId = session!.user.id;
   const [worries, setWorries] = useState<Worry[] | null>(null);
+  const [resueltas, setResueltas] = useState<Worry[]>([]);
   const [vista, setVista] = useState<Vista>('lista');
   const [texto, setTexto] = useState('');
   const [paso, setPaso] = useState('');
@@ -38,6 +47,7 @@ export default function Caja() {
 
   const load = useCallback(() => {
     getOpenWorries(userId).then(setWorries);
+    getResolvedWorries(userId).then(setResueltas);
   }, [userId]);
 
   useFocusEffect(useCallback(() => load(), [load]));
@@ -51,7 +61,9 @@ export default function Caja() {
 
   async function guardar(actionable: boolean) {
     setBusy(true);
-    const res = await createWorry(userId, texto, actionable, actionable ? paso : null, actionable ? fecha : null);
+    // Modo diaria: una sesion por dia, aunque anote varias preocupaciones.
+    const { id } = await logDailyActivity(userId, 'caja_preocupaciones');
+    const res = await createWorry(userId, texto, actionable, actionable ? paso : null, actionable ? fecha : null, id);
     setBusy(false);
     if (res.error) Alert.alert('Error', res.error);
     else {
@@ -199,6 +211,21 @@ export default function Caja() {
         </Card>
       ))}
 
+      {resueltas.length > 0 && (
+        <>
+          <AppText variant="bodyStrong" color={color.textSecondary} style={styles.section}>
+            Resueltas ({resueltas.length})
+          </AppText>
+          {resueltas.map((w) => (
+            <Card key={w.id} variant="brandSubtle" style={styles.card}>
+              <AppText variant="body" color={color.textSecondary}>
+                {w.body}
+              </AppText>
+            </Card>
+          ))}
+        </>
+      )}
+
       <SupportLink />
     </Screen>
   );
@@ -210,4 +237,5 @@ const styles = StyleSheet.create({
   plan: { backgroundColor: color.surfaceBrand, borderRadius: space.sm, padding: space.md - 2, gap: 2 },
   cardActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: space.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  section: { marginTop: space.md },
 });
